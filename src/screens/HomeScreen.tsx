@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
 import { useHabitsStore } from '../state/useHabitsStore';
 import HabitCard from '../components/HabitCard';
-import { toISODate } from '../domain/dates';
+import { toISODate, todayISO } from '../domain/dates';
 import { subDays } from 'date-fns';
 import { Habit } from '../domain/models';
+import { colors } from '../theme/tokens';
+import GlassHeader from '../components/ui/GlassHeader';
+import AnimatedPressable from '../components/ui/AnimatedPressable';
 
 type HomeScreenProps = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'Home'>;
@@ -23,6 +28,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       endISO: toISODate(end),
     };
   }, [gridRangeDays]);
+
+  const todaySummary = useMemo(() => {
+    const today = todayISO();
+    let done = 0;
+    habits.forEach((h) => {
+      const completions = completionsByHabitId[h.id];
+      if (completions?.has(today)) done++;
+    });
+    return `${done}/${habits.length} done today`;
+  }, [habits, completionsByHabitId]);
 
   useEffect(() => {
     refresh();
@@ -49,44 +64,48 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyText}>No habits yet</Text>
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() => navigation.navigate('HabitForm')}
-      >
-        <Text style={styles.createButtonText}>Create habit</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <Text style={styles.header}>HabitGrid</Text>
-      {habits.length > 0 && (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate('HabitForm')}
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      )}
+      <Text style={styles.emptySubtext}>Tap the + button to create your first habit</Text>
     </View>
   );
 
   if (isLoading && habits.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={colors.accentA} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={[colors.bg, '#0D1117', colors.bg]}
+        style={StyleSheet.absoluteFill}
+      />
+      <GlassHeader
+        title="Habits"
+        subtitle={habits.length > 0 ? todaySummary : undefined}
+        rightAction={
+          <AnimatedPressable
+            style={styles.addButton}
+            onPress={() => navigation.navigate('HabitForm')}
+            scaleValue={0.9}
+          >
+            <LinearGradient
+              colors={[colors.accentA, colors.accentB]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addButtonGradient}
+            >
+              <Ionicons name="add" size={22} color="#fff" />
+            </LinearGradient>
+          </AnimatedPressable>
+        }
+      />
       <FlatList
         data={habits}
         keyExtractor={(item) => item.id}
         renderItem={renderHabitCard}
-        ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmptyState}
         contentContainerStyle={habits.length === 0 ? styles.emptyList : styles.list}
         showsVerticalScrollIndicator={false}
@@ -98,45 +117,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
   },
   list: {
-    padding: 20,
+    padding: 16,
+    paddingBottom: 100,
   },
   emptyList: {
     flex: 1,
-    padding: 20,
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '600',
-    marginTop: -2,
+    padding: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -144,19 +139,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 20,
-  },
-  createButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  addButton: {
+    shadowColor: colors.accentA,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  addButtonGradient: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

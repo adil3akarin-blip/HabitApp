@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { generateGridCells, groupCellsByWeek, GridCell } from '../domain/grid';
 
+const INACTIVE_CELL_COLOR = 'rgba(255,255,255,0.08)';
+
 interface HabitGridProps {
   startISO: string;
   endISO: string;
@@ -27,7 +29,7 @@ const GridCellView = React.memo(function GridCellView({
         {
           width: size,
           height: size,
-          backgroundColor: isActive ? color : '#EBEDF0',
+          backgroundColor: isActive ? color : INACTIVE_CELL_COLOR,
         },
       ]}
     />

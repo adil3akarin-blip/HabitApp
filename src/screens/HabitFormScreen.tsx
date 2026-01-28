@@ -9,14 +9,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Switch,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
 import { useHabitsStore } from '../state/useHabitsStore';
 import { GoalPeriod } from '../domain/models';
 import IconPicker, { ICONS } from '../components/IconPicker';
 import ColorPicker, { COLORS } from '../components/ColorPicker';
+import {
+  scheduleHabitReminder,
+  cancelHabitReminder,
+  requestNotificationPermissions,
+} from '../domain/notifications';
+import * as habitsRepo from '../db/habitsRepo';
+import { colors, radii } from '../theme/tokens';
+import GlassSurface from '../components/ui/GlassSurface';
+import AnimatedPressable from '../components/ui/AnimatedPressable';
+import { hapticSuccess } from '../utils/haptics';
 
 type HabitFormScreenProps = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'HabitForm'>;
@@ -43,6 +56,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
   const [goalPeriod, setGoalPeriod] = useState<GoalPeriod>('day');
   const [goalTarget, setGoalTarget] = useState('1');
   const [nameError, setNameError] = useState('');
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState('09');
+  const [reminderMinute, setReminderMinute] = useState('00');
 
   useEffect(() => {
     if (existingHabit) {
@@ -52,12 +68,35 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
       setColor(existingHabit.color);
       setGoalPeriod(existingHabit.goalPeriod);
       setGoalTarget(existingHabit.goalTarget.toString());
+      setReminderEnabled(existingHabit.reminderEnabled);
+      if (existingHabit.reminderTime) {
+        const [h, m] = existingHabit.reminderTime.split(':');
+        setReminderHour(h);
+        setReminderMinute(m);
+      }
     }
   }, [existingHabit]);
+
+  const handleReminderToggle = async (value: boolean) => {
+    if (value) {
+      const hasPermission = await requestNotificationPermissions();
+      if (!hasPermission) {
+        Alert.alert(
+          'Permission Required',
+          'Please enable notifications in your device settings to use reminders.'
+        );
+        return;
+      }
+    }
+    setReminderEnabled(value);
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({
       title: isEditMode ? 'Edit Habit' : 'New Habit',
+      headerStyle: { backgroundColor: colors.bg },
+      headerTintColor: colors.text,
+      headerTitleStyle: { color: colors.text },
     });
   }, [navigation, isEditMode]);
 
@@ -75,7 +114,25 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
     }
 
     try {
+      const reminderTime = `${reminderHour}:${reminderMinute}`;
+      
       if (isEditMode && habitId) {
+        // Handle reminder updates
+        let reminderNotifId = existingHabit?.reminderNotifId || null;
+        
+        if (reminderEnabled && existingHabit) {
+          // Cancel old notification if exists
+          if (existingHabit.reminderNotifId) {
+            await cancelHabitReminder(existingHabit.reminderNotifId);
+          }
+          // Schedule new notification
+          reminderNotifId = await scheduleHabitReminder(habitId, trimmedName, reminderTime);
+        } else if (!reminderEnabled && existingHabit?.reminderNotifId) {
+          // Cancel notification if disabled
+          await cancelHabitReminder(existingHabit.reminderNotifId);
+          reminderNotifId = null;
+        }
+
         await updateHabit(habitId, {
           name: trimmedName,
           description: description.trim() || undefined,
@@ -83,8 +140,12 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
           color,
           goalPeriod,
           goalTarget: target,
+          reminderEnabled,
+          reminderTime: reminderEnabled ? reminderTime : undefined,
+          reminderNotifId,
         });
       } else {
+        // Create new habit
         await createHabit({
           name: trimmedName,
           description: description.trim() || undefined,
@@ -92,10 +153,26 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
           color,
           goalPeriod,
           goalTarget: target,
+          reminderEnabled,
+          reminderTime: reminderEnabled ? reminderTime : undefined,
         });
+
+        // Schedule notification for new habit if enabled
+        if (reminderEnabled) {
+          // Get the newly created habit to get its ID
+          const habits = await habitsRepo.listActive();
+          const newHabit = habits.find(h => h.name === trimmedName);
+          if (newHabit) {
+            const notifId = await scheduleHabitReminder(newHabit.id, trimmedName, reminderTime);
+            if (notifId) {
+              await habitsRepo.update(newHabit.id, { reminderNotifId: notifId });
+            }
+          }
+        }
       }
       navigation.goBack();
     } catch (error) {
+      console.error('Save error:', error);
       Alert.alert('Error', 'Failed to save habit');
     }
   };
@@ -105,8 +182,12 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <LinearGradient
+        colors={[colors.bg, '#0D1117', colors.bg]}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
+        <GlassSurface style={styles.section}>
           <Text style={styles.label}>Name *</Text>
           <TextInput
             style={[styles.input, nameError ? styles.inputError : null]}
@@ -116,35 +197,35 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
               if (nameError) setNameError('');
             }}
             placeholder="e.g., Morning Exercise"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textFaint}
           />
           {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
-        </View>
+        </GlassSurface>
 
-        <View style={styles.section}>
+        <GlassSurface style={styles.section}>
           <Text style={styles.label}>Description</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={description}
             onChangeText={setDescription}
             placeholder="Optional description..."
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textFaint}
             multiline
             numberOfLines={3}
           />
-        </View>
+        </GlassSurface>
 
-        <View style={styles.section}>
+        <GlassSurface style={styles.section}>
           <Text style={styles.label}>Color</Text>
           <ColorPicker selectedColor={color} onSelect={setColor} />
-        </View>
+        </GlassSurface>
 
-        <View style={styles.section}>
+        <GlassSurface style={styles.section}>
           <Text style={styles.label}>Icon</Text>
           <IconPicker selectedIcon={icon} onSelect={setIcon} color={color} />
-        </View>
+        </GlassSurface>
 
-        <View style={styles.section}>
+        <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Period</Text>
           <View style={styles.periodContainer}>
             {GOAL_PERIODS.map((period) => (
@@ -167,9 +248,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </GlassSurface>
 
-        <View style={styles.section}>
+        <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Target</Text>
           <View style={styles.targetContainer}>
             <TouchableOpacity
@@ -201,16 +282,68 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
               times per {goalPeriod}
             </Text>
           </View>
-        </View>
+        </GlassSurface>
 
-        <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: color }]}
-          onPress={handleSave}
+        <GlassSurface style={styles.section}>
+          <Text style={styles.label}>Daily Reminder</Text>
+          <View style={styles.reminderRow}>
+            <View style={styles.reminderInfo}>
+              <Ionicons name="notifications-outline" size={22} color={colors.textMuted} />
+              <Text style={styles.reminderLabel}>Enable reminder</Text>
+            </View>
+            <Switch
+              value={reminderEnabled}
+              onValueChange={handleReminderToggle}
+              trackColor={{ false: colors.glass, true: color }}
+            />
+          </View>
+          {reminderEnabled && (
+            <View style={styles.timePickerRow}>
+              <Text style={styles.timeLabel}>Remind at:</Text>
+              <View style={styles.timePicker}>
+                <TextInput
+                  style={styles.timeInput}
+                  value={reminderHour}
+                  onChangeText={(t) => setReminderHour(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="09"
+                  placeholderTextColor={colors.textFaint}
+                />
+                <Text style={styles.timeColon}>:</Text>
+                <TextInput
+                  style={styles.timeInput}
+                  value={reminderMinute}
+                  onChangeText={(t) => setReminderMinute(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="00"
+                  placeholderTextColor={colors.textFaint}
+                />
+              </View>
+            </View>
+          )}
+        </GlassSurface>
+
+        <AnimatedPressable
+          style={styles.saveButton}
+          onPress={async () => {
+            await handleSave();
+            hapticSuccess();
+          }}
+          scaleValue={0.98}
         >
-          <Text style={styles.saveButtonText}>
-            {isEditMode ? 'Save Changes' : 'Create Habit'}
-          </Text>
-        </TouchableOpacity>
+          <LinearGradient
+            colors={[colors.accentA, colors.accentB]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.saveButtonGradient}
+          >
+            <Text style={styles.saveButtonText}>
+              {isEditMode ? 'Save Changes' : 'Create Habit'}
+            </Text>
+          </LinearGradient>
+        </AnimatedPressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -219,38 +352,40 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
   },
   scroll: {
     flex: 1,
-    padding: 20,
+    padding: 16,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 16,
+    padding: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.card,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.glassStrong,
+    color: colors.text,
   },
   inputError: {
-    borderColor: '#FF3B30',
+    borderColor: colors.danger,
   },
   textArea: {
     height: 80,
     textAlignVertical: 'top',
   },
   errorText: {
-    color: '#FF3B30',
+    color: colors.danger,
     fontSize: 12,
     marginTop: 4,
   },
@@ -261,14 +396,16 @@ const styles = StyleSheet.create({
   periodButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#F5F5F5',
+    borderRadius: radii.card,
+    backgroundColor: colors.glassStrong,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
   },
   periodText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: colors.textMuted,
   },
   periodTextSelected: {
     color: '#fff',
@@ -282,37 +419,93 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.glassStrong,
+    borderWidth: 1,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   targetButtonText: {
     fontSize: 24,
-    color: '#333',
+    color: colors.text,
   },
   targetInput: {
     width: 60,
     height: 44,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.card,
     fontSize: 18,
     fontWeight: '600',
+    color: colors.text,
+    backgroundColor: colors.glassStrong,
   },
   targetLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textMuted,
   },
   saveButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
     marginTop: 10,
     marginBottom: 40,
+    borderRadius: radii.card,
+    overflow: 'hidden',
+  },
+  saveButtonGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  reminderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reminderLabel: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  timePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  timeLabel: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  timePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeInput: {
+    width: 50,
+    height: 44,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.card,
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    backgroundColor: colors.glassStrong,
+    color: colors.text,
+  },
+  timeColon: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginHorizontal: 8,
+    color: colors.text,
   },
 });

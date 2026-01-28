@@ -40,5 +40,24 @@ export async function runMigrations(): Promise<void> {
     ON habits(archivedAt);
   `);
 
+  // Add reminder fields to habits table (migration for existing DBs)
+  try {
+    await execAsync(
+      `ALTER TABLE habits ADD COLUMN reminderEnabled INTEGER DEFAULT 0;`,
+    );
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    await execAsync(`ALTER TABLE habits ADD COLUMN reminderTime TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    await execAsync(`ALTER TABLE habits ADD COLUMN reminderNotifId TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
+
   console.log("migrations ok");
 }

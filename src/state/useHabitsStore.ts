@@ -19,6 +19,7 @@ interface HabitsState {
   createHabit: (data: HabitInput) => Promise<void>;
   updateHabit: (id: string, data: HabitPatch) => Promise<void>;
   archiveHabit: (id: string) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
 }
 
 export const useHabitsStore = create<HabitsState>((set, get) => ({
@@ -113,5 +114,36 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     set((state) => ({
       habits: state.habits.filter((h) => h.id !== id),
     }));
+  },
+
+  deleteHabit: async (id: string) => {
+    const { habits, completionsByHabitId } = get();
+    const habitToDelete = habits.find((h) => h.id === id);
+    const completionsBackup = completionsByHabitId[id];
+
+    // Optimistic update
+    const newCompletions = { ...completionsByHabitId };
+    delete newCompletions[id];
+
+    set({
+      habits: habits.filter((h) => h.id !== id),
+      completionsByHabitId: newCompletions,
+    });
+
+    try {
+      await habitsRepo.deleteHabit(id);
+    } catch (error) {
+      // Restore previous state on failure
+      if (habitToDelete) {
+        set((state) => ({
+          habits: [...state.habits, habitToDelete],
+          completionsByHabitId: {
+            ...state.completionsByHabitId,
+            [id]: completionsBackup || new Set<string>(),
+          },
+        }));
+      }
+      throw error;
+    }
   },
 }));

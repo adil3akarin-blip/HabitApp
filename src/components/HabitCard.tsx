@@ -1,9 +1,21 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Habit } from '../domain/models';
 import HabitGrid from './HabitGrid';
 import { todayISO } from '../domain/dates';
+import { colors, radii, shadow } from '../theme/tokens';
+import { hapticTap } from '../utils/haptics';
+import AnimatedPressable from './ui/AnimatedPressable';
+
+const AnimatedPressableView = Animated.createAnimatedComponent(Pressable);
 
 interface HabitCardProps {
   habit: Habit;
@@ -26,19 +38,34 @@ function HabitCard({
 }: HabitCardProps) {
   const today = todayISO();
   const isCompletedToday = completions.has(today);
+  
+  const toggleScale = useSharedValue(1);
+
+  const toggleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: toggleScale.value }],
+  }));
+
+  const handleTogglePress = () => {
+    hapticTap();
+    toggleScale.value = withSequence(
+      withTiming(0.85, { duration: 80 }),
+      withSpring(1, { damping: 12, stiffness: 400 })
+    );
+    onToggleToday();
+  };
 
   return (
-    <TouchableOpacity
-      style={[styles.container, { borderLeftColor: habit.color }]}
+    <AnimatedPressable
+      style={styles.container}
       onPress={onPress}
       onLongPress={onLongPress}
-      activeOpacity={0.7}
+      scaleValue={0.98}
     >
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           <Ionicons
             name={habit.icon as keyof typeof Ionicons.glyphMap}
-            size={24}
+            size={22}
             color={habit.color}
           />
         </View>
@@ -50,20 +77,26 @@ function HabitCard({
             </Text>
           ) : null}
         </View>
-        <TouchableOpacity
+        <AnimatedPressableView
           style={[
             styles.toggleButton,
-            { backgroundColor: isCompletedToday ? habit.color : '#E5E5E5' },
+            isCompletedToday && {
+              backgroundColor: habit.color,
+              shadowColor: habit.color,
+              shadowOpacity: 0.6,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+            },
+            toggleAnimatedStyle,
           ]}
-          onPress={(e) => {
-            e.stopPropagation();
-            onToggleToday();
-          }}
+          onPress={handleTogglePress}
         >
-          <Text style={styles.toggleText}>
-            {isCompletedToday ? '✓' : '○'}
-          </Text>
-        </TouchableOpacity>
+          <Ionicons
+            name={isCompletedToday ? 'checkmark' : 'add'}
+            size={20}
+            color={isCompletedToday ? '#fff' : colors.textMuted}
+          />
+        </AnimatedPressableView>
       </View>
       <View style={styles.gridContainer}>
         <HabitGrid
@@ -75,7 +108,7 @@ function HabitCard({
           cellGap={2}
         />
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -83,11 +116,13 @@ export default React.memo(HabitCard);
 
 const styles = StyleSheet.create({
   container: {
-    padding: 15,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
+    padding: 16,
+    backgroundColor: colors.glass,
+    borderRadius: radii.card,
     marginBottom: 12,
-    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow,
   },
   header: {
     flexDirection: 'row',
@@ -97,7 +132,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.glassStrong,
+    borderWidth: 1,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -108,24 +145,22 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: colors.text,
   },
   description: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textMuted,
     marginTop: 2,
   },
   toggleButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: colors.glassStrong,
+    borderWidth: 1,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  toggleText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
   },
   gridContainer: {
     marginTop: 12,

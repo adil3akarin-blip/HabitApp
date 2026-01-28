@@ -9,23 +9,48 @@ function nowISO(): string {
   return new Date().toISOString();
 }
 
+interface HabitRow {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string;
+  color: string;
+  goalPeriod: string;
+  goalTarget: number;
+  archivedAt: string | null;
+  createdAt: string;
+  reminderEnabled: number;
+  reminderTime: string | null;
+  reminderNotifId: string | null;
+}
+
+function rowToHabit(row: HabitRow): Habit {
+  return {
+    ...row,
+    goalPeriod: row.goalPeriod as Habit["goalPeriod"],
+    reminderEnabled: row.reminderEnabled === 1,
+  };
+}
+
 export async function listActive(): Promise<Habit[]> {
-  return queryAsync<Habit>(
+  const rows = await queryAsync<HabitRow>(
     `SELECT * FROM habits WHERE archivedAt IS NULL ORDER BY createdAt ASC`,
   );
+  return rows.map(rowToHabit);
 }
 
 export async function listArchived(): Promise<Habit[]> {
-  return queryAsync<Habit>(
+  const rows = await queryAsync<HabitRow>(
     `SELECT * FROM habits WHERE archivedAt IS NOT NULL ORDER BY archivedAt DESC`,
   );
+  return rows.map(rowToHabit);
 }
 
 export async function getById(id: string): Promise<Habit | null> {
-  const results = await queryAsync<Habit>(`SELECT * FROM habits WHERE id = ?`, [
+  const rows = await queryAsync<HabitRow>(`SELECT * FROM habits WHERE id = ?`, [
     id,
   ]);
-  return results[0] || null;
+  return rows[0] ? rowToHabit(rows[0]) : null;
 }
 
 export async function create(input: HabitInput): Promise<Habit> {
@@ -41,11 +66,14 @@ export async function create(input: HabitInput): Promise<Habit> {
     goalTarget: input.goalTarget,
     archivedAt: null,
     createdAt,
+    reminderEnabled: input.reminderEnabled || false,
+    reminderTime: input.reminderTime || null,
+    reminderNotifId: null,
   };
 
   await runAsync(
-    `INSERT INTO habits (id, name, description, icon, color, goalPeriod, goalTarget, archivedAt, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO habits (id, name, description, icon, color, goalPeriod, goalTarget, archivedAt, createdAt, reminderEnabled, reminderTime, reminderNotifId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       habit.id,
       habit.name,
@@ -56,6 +84,9 @@ export async function create(input: HabitInput): Promise<Habit> {
       habit.goalTarget,
       habit.archivedAt,
       habit.createdAt,
+      habit.reminderEnabled ? 1 : 0,
+      habit.reminderTime,
+      habit.reminderNotifId,
     ],
   );
 
@@ -89,6 +120,18 @@ export async function update(id: string, patch: HabitPatch): Promise<void> {
   if (patch.goalTarget !== undefined) {
     fields.push("goalTarget = ?");
     values.push(patch.goalTarget);
+  }
+  if (patch.reminderEnabled !== undefined) {
+    fields.push("reminderEnabled = ?");
+    values.push(patch.reminderEnabled ? 1 : 0);
+  }
+  if (patch.reminderTime !== undefined) {
+    fields.push("reminderTime = ?");
+    values.push(patch.reminderTime);
+  }
+  if (patch.reminderNotifId !== undefined) {
+    fields.push("reminderNotifId = ?");
+    values.push(patch.reminderNotifId);
   }
 
   if (fields.length === 0) return;

@@ -10,6 +10,9 @@ export interface Habit {
   goalTarget: number;
   archivedAt: string | null;
   createdAt: string;
+  reminderEnabled: boolean;
+  reminderTime: string | null;
+  reminderNotifId: string | null;
 }
 
 export interface Completion {
@@ -27,6 +30,8 @@ export interface HabitInput {
   color: string;
   goalPeriod: GoalPeriod;
   goalTarget: number;
+  reminderEnabled?: boolean;
+  reminderTime?: string;
 }
 
 export interface HabitPatch {
@@ -36,4 +41,7 @@ export interface HabitPatch {
   color?: string;
   goalPeriod?: GoalPeriod;
   goalTarget?: number;
+  reminderEnabled?: boolean;
+  reminderTime?: string;
+  reminderNotifId?: string | null;
 }
