@@ -1,17 +1,17 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-  withRepeat,
   Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/tokens';
 import { springBounce } from '../../ui/motion';
+import FlameIcon from '../svg/FlameIcon';
 
 interface StreakBadgeProps {
   streak: number;
@@ -70,7 +70,7 @@ export default function StreakBadge({ streak, color = colors.accentA, size = 'sm
       ]}
     >
       <Animated.View style={flameStyle}>
-        <Ionicons name="flame" size={iconSize} color={color} />
+        <FlameIcon size={iconSize} color={color} animate={streak > 0} />
       </Animated.View>
       <Text
         style={[

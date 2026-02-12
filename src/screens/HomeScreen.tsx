@@ -3,21 +3,22 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { subDays } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSpring,
-    withTiming,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
 import HabitCard from '../components/HabitCard';
+import PulseLoader from '../components/svg/PulseLoader';
+import SVGProgressRing from '../components/svg/SVGProgressRing';
 import AnimatedPressable from '../components/ui/AnimatedPressable';
 import EmptyState from '../components/ui/EmptyState';
 import GlassHeader from '../components/ui/GlassHeader';
-import ProgressRing from '../components/ui/ProgressRing';
 import { toISODate, todayISO } from '../domain/dates';
 import { Habit } from '../domain/models';
 import { useHabitsStore } from '../state/useHabitsStore';
@@ -116,7 +117,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           colors={[colors.bg, '#0D1117', colors.bg]}
           style={StyleSheet.absoluteFill}
         />
-        <ActivityIndicator size="large" color={colors.accentA} />
+        <PulseLoader size={48} color={colors.accentA} secondaryColor={colors.accentB} />
       </View>
     );
   }
@@ -133,7 +134,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         rightAction={
           <View style={styles.headerRight}>
             {habits.length > 0 && (
-              <ProgressRing done={done} total={total} />
+              <SVGProgressRing done={done} total={total} />
             )}
             <AnimatedPressable
               style={styles.addButton}

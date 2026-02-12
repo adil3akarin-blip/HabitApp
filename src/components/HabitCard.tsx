@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSequence,
-    withSpring,
-    withTiming
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
 import { todayISO } from '../domain/dates';
 import { Habit } from '../domain/models';
@@ -16,6 +16,7 @@ import { colors, radii, shadow } from '../theme/tokens';
 import { springBounce, springPress } from '../ui/motion';
 import { hapticMedium, hapticSelection } from '../utils/haptics';
 import HabitGrid from './HabitGrid';
+import CheckmarkDraw from './svg/CheckmarkDraw';
 import AnimatedPressable from './ui/AnimatedPressable';
 import StreakBadge from './ui/StreakBadge';
 import SuccessConfetti from './ui/SuccessConfetti';
@@ -151,11 +152,11 @@ function HabitCard({
             accessibilityLabel={`${isCompletedToday ? 'Unmark' : 'Mark'} ${habit.name} as done`}
           >
             <Animated.View style={checkStyle}>
-              <Ionicons
-                name={isCompletedToday ? 'checkmark' : 'add'}
-                size={20}
-                color={isCompletedToday ? '#fff' : colors.textMuted}
-              />
+              {isCompletedToday ? (
+                <CheckmarkDraw checked={true} size={20} stroke="#fff" strokeWidth={2.5} />
+              ) : (
+                <Ionicons name="add" size={20} color={colors.textMuted} />
+              )}
             </Animated.View>
           </AnimatedPressableView>
           <SuccessConfetti

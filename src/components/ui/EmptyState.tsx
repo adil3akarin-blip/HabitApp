@@ -3,16 +3,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withRepeat,
-    withSequence,
-    withTiming,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
 import { colors } from '../../theme/tokens';
 import { DURATION_FADE_IN } from '../../ui/motion';
+import EmptyStateIllustration from '../svg/EmptyStateIllustration';
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -92,16 +93,7 @@ export default function EmptyState({
             end={{ x: 0, y: 0 }}
           />
         </Animated.View>
-        <Animated.View style={breatheStyle}>
-          <LinearGradient
-            colors={[colors.accentA + '30', colors.accentB + '15']}
-            style={styles.iconCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name={icon} size={36} color={colors.accentB} />
-          </LinearGradient>
-        </Animated.View>
+        <EmptyStateIllustration size={120} color={colors.accentB} secondaryColor={colors.accentA} />
       </View>
 
       <Animated.Text style={[styles.title, titleStyle]}>{title}</Animated.Text>
