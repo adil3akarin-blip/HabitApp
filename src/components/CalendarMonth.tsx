@@ -1,25 +1,26 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
 import {
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  isSameMonth,
-  isSameDay,
-  format,
+    addDays,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isSameDay,
+    isSameMonth,
+    startOfMonth,
+    startOfWeek,
 } from 'date-fns';
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 import { toISODate } from '../domain/dates';
 import { colors } from '../theme/tokens';
-import { hapticTap } from '../utils/haptics';
+import { springBounce } from '../ui/motion';
+import { hapticMedium, hapticSelection } from '../utils/haptics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -59,10 +60,14 @@ const DayCellComponent = React.memo(function DayCellComponent({
   }));
 
   const handlePress = () => {
-    hapticTap();
+    if (!isActive) {
+      hapticMedium();
+    } else {
+      hapticSelection();
+    }
     scale.value = withSequence(
-      withTiming(0.85, { duration: 60 }),
-      withSpring(1, { damping: 12, stiffness: 400 })
+      withTiming(0.8, { duration: 60 }),
+      withSpring(1, springBounce),
     );
     onToggle();
   };
@@ -72,13 +77,21 @@ const DayCellComponent = React.memo(function DayCellComponent({
       <AnimatedPressable
         style={[
           styles.dayContent,
-          isActive && { backgroundColor: color },
+          isActive && {
+            backgroundColor: color,
+            shadowColor: color,
+            shadowOpacity: 0.4,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 2 },
+          },
           day.isToday && !isActive && styles.todayBorder,
           day.isToday && isActive && { borderColor: '#fff', borderWidth: 2 },
           animatedStyle,
         ]}
         onPress={handlePress}
         disabled={!day.isCurrentMonth}
+        accessibilityRole="button"
+        accessibilityLabel={`${format(day.date, 'MMMM d')}${isActive ? ', completed' : ''}`}
       >
         <Text
           style={[

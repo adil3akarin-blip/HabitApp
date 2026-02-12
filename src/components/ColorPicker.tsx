@@ -1,6 +1,17 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
+import { springBounce } from '../ui/motion';
+import { hapticSelection } from '../utils/haptics';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const COLORS = [
   '#007AFF',
@@ -26,6 +37,50 @@ interface ColorPickerProps {
   onSelect: (color: string) => void;
 }
 
+const ColorDot = React.memo(function ColorDot({
+  color,
+  isSelected,
+  onSelect,
+}: {
+  color: string;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    hapticSelection();
+    scale.value = withSequence(
+      withTiming(0.8, { duration: 80 }),
+      withSpring(1, springBounce),
+    );
+    onSelect();
+  };
+
+  return (
+    <AnimatedPressable
+      style={[
+        styles.colorButton,
+        { backgroundColor: color },
+        isSelected && [styles.selected, { shadowColor: color }],
+        animatedStyle,
+      ]}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={`Color ${color}`}
+      accessibilityState={{ selected: isSelected }}
+    >
+      {isSelected && (
+        <Ionicons name="checkmark" size={20} color="#fff" />
+      )}
+    </AnimatedPressable>
+  );
+});
+
 function ColorPicker({ selectedColor, onSelect }: ColorPickerProps) {
   return (
     <ScrollView 
@@ -33,24 +88,14 @@ function ColorPicker({ selectedColor, onSelect }: ColorPickerProps) {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {COLORS.map((color) => {
-        const isSelected = selectedColor === color;
-        return (
-          <TouchableOpacity
-            key={color}
-            style={[
-              styles.colorButton,
-              { backgroundColor: color },
-              isSelected && styles.selected,
-            ]}
-            onPress={() => onSelect(color)}
-          >
-            {isSelected && (
-              <Ionicons name="checkmark" size={20} color="#fff" />
-            )}
-          </TouchableOpacity>
-        );
-      })}
+      {COLORS.map((color) => (
+        <ColorDot
+          key={color}
+          color={color}
+          isSelected={selectedColor === color}
+          onSelect={() => onSelect(color)}
+        />
+      ))}
     </ScrollView>
   );
 }
@@ -75,10 +120,9 @@ const styles = StyleSheet.create({
   selected: {
     borderWidth: 3,
     borderColor: '#fff',
-    shadowColor: '#000',
+    shadowOpacity: 0.5,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 5,
   },
 });

@@ -1,21 +1,31 @@
-import React, { useState, useLayoutEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { format, addMonths, subMonths } from 'date-fns';
+import { addMonths, format, subMonths } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
-import { useHabitsStore } from '../state/useHabitsStore';
 import CalendarMonth from '../components/CalendarMonth';
-import { computeStreak, computeLongestStreak } from '../domain/streaks';
-import { todayISO } from '../domain/dates';
-import { cancelHabitReminder } from '../domain/notifications';
-import { colors, radii, shadow } from '../theme/tokens';
+import AnimatedPressable from '../components/ui/AnimatedPressable';
 import GlassSurface from '../components/ui/GlassSurface';
 import Pill from '../components/ui/Pill';
-import { hapticWarning } from '../utils/haptics';
-import AnimatedPressable from '../components/ui/AnimatedPressable';
+import { todayISO } from '../domain/dates';
+import { cancelHabitReminder } from '../domain/notifications';
+import { computeLongestStreak, computeStreak } from '../domain/streaks';
+import { useHabitsStore } from '../state/useHabitsStore';
+import { colors, radii } from '../theme/tokens';
+import { springGentle } from '../ui/motion';
+import { hapticSelection, hapticWarning } from '../utils/haptics';
+import { getStreakMessage } from '../utils/microcopy';
 
 type HabitDetailsScreenProps = {
   route: RouteProp<HomeStackParamList, 'HabitDetails'>;
@@ -30,6 +40,37 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
   const completions = completionsByHabitId[habitId] || new Set<string>();
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Entrance animations
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(20);
+  const statsOpacity = useSharedValue(0);
+  const statsTranslateY = useSharedValue(16);
+  const calendarOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    headerOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
+    headerTranslateY.value = withSpring(0, springGentle);
+
+    statsOpacity.value = withDelay(150, withTiming(1, { duration: 300 }));
+    statsTranslateY.value = withDelay(150, withSpring(0, springGentle));
+
+    calendarOpacity.value = withDelay(300, withTiming(1, { duration: 400 }));
+  }, []);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const statsStyle = useAnimatedStyle(() => ({
+    opacity: statsOpacity.value,
+    transform: [{ translateY: statsTranslateY.value }],
+  }));
+
+  const calendarStyle = useAnimatedStyle(() => ({
+    opacity: calendarOpacity.value,
+  }));
 
   useLayoutEffect(() => {
     if (habit) {
@@ -59,10 +100,12 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
   }
 
   const handlePrevMonth = () => {
+    hapticSelection();
     setCurrentMonth((prev) => subMonths(prev, 1));
   };
 
   const handleNextMonth = () => {
+    hapticSelection();
     setCurrentMonth((prev) => addMonths(prev, 1));
   };
 
@@ -78,6 +121,10 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
     return computeLongestStreak(completions);
   }, [completions]);
 
+  const streakMessage = useMemo(() => {
+    return getStreakMessage(currentStreak);
+  }, [currentStreak]);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -85,23 +132,31 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
         style={StyleSheet.absoluteFill}
       />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: habit.color + '30' }]}>
-            <Ionicons
-              name={habit.icon as keyof typeof Ionicons.glyphMap}
-              size={32}
-              color={habit.color}
-            />
+        <Animated.View style={headerStyle}>
+          <View style={styles.header}>
+            <View style={[styles.iconContainer, { backgroundColor: habit.color + '20' }]}>
+              <View style={[styles.iconGlow, { backgroundColor: habit.color + '10' }]} />
+              <Ionicons
+                name={habit.icon as keyof typeof Ionicons.glyphMap}
+                size={32}
+                color={habit.color}
+              />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.habitName}>{habit.name}</Text>
+              {habit.description ? (
+                <Text style={styles.habitDescription}>{habit.description}</Text>
+              ) : null}
+              {streakMessage ? (
+                <Text style={[styles.streakMessage, { color: habit.color }]}>
+                  {streakMessage}
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.habitName}>{habit.name}</Text>
-            {habit.description ? (
-              <Text style={styles.habitDescription}>{habit.description}</Text>
-            ) : null}
-          </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.pillsRow}>
+        <Animated.View style={[styles.pillsRow, statsStyle]}>
           <Pill
             label="streak"
             value={currentStreak}
@@ -117,30 +172,32 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
             value={completions.size}
             icon={<Ionicons name="checkmark-circle" size={14} color={habit.color} />}
           />
-        </View>
+        </Animated.View>
 
-        <GlassSurface style={styles.calendarSection}>
-          <View style={styles.monthHeader}>
-            <TouchableOpacity onPress={handlePrevMonth} style={styles.monthButton}>
-              <Ionicons name="chevron-back" size={24} color={colors.accentB} />
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>
-              {format(currentMonth, 'MMMM yyyy')}
-            </Text>
-            <TouchableOpacity onPress={handleNextMonth} style={styles.monthButton}>
-              <Ionicons name="chevron-forward" size={24} color={colors.accentB} />
-            </TouchableOpacity>
-          </View>
+        <Animated.View style={calendarStyle}>
+          <GlassSurface style={styles.calendarSection}>
+            <View style={styles.monthHeader}>
+              <AnimatedPressable onPress={handlePrevMonth} style={styles.monthButton} scaleValue={0.85} haptic={false}>
+                <Ionicons name="chevron-back" size={24} color={colors.accentB} />
+              </AnimatedPressable>
+              <Text style={styles.monthTitle}>
+                {format(currentMonth, 'MMMM yyyy')}
+              </Text>
+              <AnimatedPressable onPress={handleNextMonth} style={styles.monthButton} scaleValue={0.85} haptic={false}>
+                <Ionicons name="chevron-forward" size={24} color={colors.accentB} />
+              </AnimatedPressable>
+            </View>
 
-          <CalendarMonth
-            month={currentMonth}
-            activeDates={completions}
-            color={habit.color}
-            onToggleDate={handleToggleDate}
-          />
-        </GlassSurface>
+            <CalendarMonth
+              month={currentMonth}
+              activeDates={completions}
+              color={habit.color}
+              onToggleDate={handleToggleDate}
+            />
+          </GlassSurface>
 
-        <Text style={styles.hint}>Tap any day to toggle completion</Text>
+          <Text style={styles.hint}>Tap any day to toggle completion</Text>
+        </Animated.View>
 
         <AnimatedPressable
           style={styles.archiveButton}
@@ -226,6 +283,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  iconGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
   },
   headerInfo: {
     flex: 1,
@@ -238,6 +301,11 @@ const styles = StyleSheet.create({
   habitDescription: {
     fontSize: 14,
     color: colors.textMuted,
+    marginTop: 4,
+  },
+  streakMessage: {
+    fontSize: 13,
+    fontWeight: '600',
     marginTop: 4,
   },
   editButton: {
@@ -267,6 +335,7 @@ const styles = StyleSheet.create({
   },
   monthButton: {
     padding: 8,
+    borderRadius: 12,
   },
   monthTitle: {
     fontSize: 18,

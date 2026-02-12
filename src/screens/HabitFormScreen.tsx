@@ -1,35 +1,35 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Switch,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { HomeStackParamList } from '../app/navigation/HomeStack';
-import { useHabitsStore } from '../state/useHabitsStore';
-import { GoalPeriod } from '../domain/models';
-import IconPicker, { ICONS } from '../components/IconPicker';
-import ColorPicker, { COLORS } from '../components/ColorPicker';
+import { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import {
-  scheduleHabitReminder,
-  cancelHabitReminder,
-  requestNotificationPermissions,
-} from '../domain/notifications';
-import * as habitsRepo from '../db/habitsRepo';
-import { colors, radii } from '../theme/tokens';
-import GlassSurface from '../components/ui/GlassSurface';
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { HomeStackParamList } from '../app/navigation/HomeStack';
+import ColorPicker, { COLORS } from '../components/ColorPicker';
+import IconPicker, { ICONS } from '../components/IconPicker';
 import AnimatedPressable from '../components/ui/AnimatedPressable';
-import { hapticSuccess } from '../utils/haptics';
+import GlassSurface from '../components/ui/GlassSurface';
+import * as habitsRepo from '../db/habitsRepo';
+import { GoalPeriod } from '../domain/models';
+import {
+    cancelHabitReminder,
+    requestNotificationPermissions,
+    scheduleHabitReminder,
+} from '../domain/notifications';
+import { useHabitsStore } from '../state/useHabitsStore';
+import { colors, radii } from '../theme/tokens';
+import { hapticSelection, hapticSuccess } from '../utils/haptics';
 
 type HabitFormScreenProps = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'HabitForm'>;
@@ -233,9 +233,12 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
                 key={period.value}
                 style={[
                   styles.periodButton,
-                  goalPeriod === period.value && { backgroundColor: color },
+                  goalPeriod === period.value && { backgroundColor: color, shadowColor: color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
                 ]}
-                onPress={() => setGoalPeriod(period.value)}
+                onPress={() => {
+                  hapticSelection();
+                  setGoalPeriod(period.value);
+                }}
               >
                 <Text
                   style={[
@@ -256,6 +259,7 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             <TouchableOpacity
               style={styles.targetButton}
               onPress={() => {
+                hapticSelection();
                 const current = parseInt(goalTarget, 10) || 1;
                 if (current > 1) setGoalTarget((current - 1).toString());
               }}
@@ -272,6 +276,7 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             <TouchableOpacity
               style={styles.targetButton}
               onPress={() => {
+                hapticSelection();
                 const current = parseInt(goalTarget, 10) || 0;
                 setGoalTarget((current + 1).toString());
               }}
@@ -328,8 +333,8 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         <AnimatedPressable
           style={styles.saveButton}
           onPress={async () => {
-            await handleSave();
             hapticSuccess();
+            await handleSave();
           }}
           scaleValue={0.98}
         >

@@ -1,6 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 import { colors, radii } from '../../theme/tokens';
+import { springBounce } from '../../ui/motion';
 
 interface PillProps {
   label: string;
@@ -9,12 +17,29 @@ interface PillProps {
 }
 
 export default function Pill({ label, value, icon }: PillProps) {
+  const scale = useSharedValue(1);
+  const prevValue = useRef(value);
+
+  useEffect(() => {
+    if (prevValue.current !== value && typeof value === 'number' && value > 0) {
+      scale.value = withSequence(
+        withTiming(1.15, { duration: 100 }),
+        withSpring(1, springBounce),
+      );
+    }
+    prevValue.current = value;
+  }, [value]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <View style={styles.pill}>
+    <Animated.View style={[styles.pill, animatedStyle]}>
       {icon && <View style={styles.icon}>{icon}</View>}
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>
-    </View>
+    </Animated.View>
   );
 }
 

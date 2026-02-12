@@ -1,11 +1,13 @@
 import React from 'react';
-import { Pressable, ViewStyle, StyleProp } from 'react-native';
+import { Pressable, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming
 } from 'react-native-reanimated';
+import { DURATION_PRESS, pressOpacityDown, springSnappy } from '../../ui/motion';
+import { hapticSelection } from '../../utils/haptics';
 
 const AnimatedPressableView = Animated.createAnimatedComponent(Pressable);
 
@@ -17,6 +19,7 @@ interface AnimatedPressableProps {
   style?: StyleProp<ViewStyle>;
   scaleValue?: number;
   activeOpacity?: number;
+  haptic?: boolean;
 }
 
 export default function AnimatedPressable({
@@ -27,6 +30,7 @@ export default function AnimatedPressable({
   style,
   scaleValue = 0.96,
   activeOpacity = 1,
+  haptic = true,
 }: AnimatedPressableProps) {
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -37,15 +41,19 @@ export default function AnimatedPressable({
   }));
 
   const handlePressIn = () => {
-    scale.value = withTiming(scaleValue, { duration: 100 });
-    if (activeOpacity < 1) {
-      opacity.value = withTiming(activeOpacity, { duration: 100 });
+    scale.value = withTiming(scaleValue, { duration: DURATION_PRESS });
+    opacity.value = withTiming(
+      activeOpacity < 1 ? activeOpacity : pressOpacityDown,
+      { duration: DURATION_PRESS },
+    );
+    if (haptic) {
+      hapticSelection();
     }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-    opacity.value = withTiming(1, { duration: 100 });
+    scale.value = withSpring(1, springSnappy);
+    opacity.value = withTiming(1, { duration: DURATION_PRESS });
   };
 
   return (
@@ -56,6 +64,7 @@ export default function AnimatedPressable({
       onPressOut={handlePressOut}
       disabled={disabled}
       style={[animatedStyle, style]}
+      accessibilityRole="button"
     >
       {children}
     </AnimatedPressableView>
