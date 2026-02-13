@@ -1,34 +1,34 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  ScrollView,
+  StyleSheet,
   Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
-import { useHabitsStore } from '../state/useHabitsStore';
-import { GoalPeriod } from '../domain/models';
-import IconPicker, { ICONS } from '../components/IconPicker';
+import AnimatedSection from '../components/AnimatedSection';
 import ColorPicker, { COLORS } from '../components/ColorPicker';
+import IconPicker, { ICONS } from '../components/IconPicker';
+import AnimatedPressable from '../components/ui/AnimatedPressable';
+import GlassSurface from '../components/ui/GlassSurface';
+import * as habitsRepo from '../db/habitsRepo';
+import { GoalPeriod } from '../domain/models';
 import {
-  scheduleHabitReminder,
   cancelHabitReminder,
   requestNotificationPermissions,
+  scheduleHabitReminder,
 } from '../domain/notifications';
-import * as habitsRepo from '../db/habitsRepo';
+import { useHabitsStore } from '../state/useHabitsStore';
 import { colors, radii } from '../theme/tokens';
-import GlassSurface from '../components/ui/GlassSurface';
-import AnimatedPressable from '../components/ui/AnimatedPressable';
 import { hapticSuccess } from '../utils/haptics';
 
 type HabitFormScreenProps = {
@@ -96,7 +96,8 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
       title: isEditMode ? 'Edit Habit' : 'New Habit',
       headerStyle: { backgroundColor: colors.bg },
       headerTintColor: colors.text,
-      headerTitleStyle: { color: colors.text },
+      headerTitleStyle: { color: colors.text, fontWeight: '600' },
+      headerShadowVisible: false,
     });
   }, [navigation, isEditMode]);
 
@@ -182,11 +183,8 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <LinearGradient
-        colors={[colors.bg, '#0D1117', colors.bg]}
-        style={StyleSheet.absoluteFill}
-      />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        <AnimatedSection index={0}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Name *</Text>
           <TextInput
@@ -201,7 +199,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
           />
           {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={1}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Description</Text>
           <TextInput
@@ -214,17 +214,23 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             numberOfLines={3}
           />
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={2}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Color</Text>
           <ColorPicker selectedColor={color} onSelect={setColor} />
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={3}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Icon</Text>
           <IconPicker selectedIcon={icon} onSelect={setIcon} color={color} />
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={4}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Period</Text>
           <View style={styles.periodContainer}>
@@ -249,7 +255,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             ))}
           </View>
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={5}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Target</Text>
           <View style={styles.targetContainer}>
@@ -283,7 +291,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             </Text>
           </View>
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={6}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Daily Reminder</Text>
           <View style={styles.reminderRow}>
@@ -324,7 +334,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             </View>
           )}
         </GlassSurface>
+        </AnimatedSection>
 
+        <AnimatedSection index={7}>
         <AnimatedPressable
           style={styles.saveButton}
           onPress={async () => {
@@ -333,17 +345,11 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
           }}
           scaleValue={0.98}
         >
-          <LinearGradient
-            colors={[colors.accentA, colors.accentB]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.saveButtonGradient}
-          >
-            <Text style={styles.saveButtonText}>
-              {isEditMode ? 'Save Changes' : 'Create Habit'}
-            </Text>
-          </LinearGradient>
+          <Text style={styles.saveButtonText}>
+            {isEditMode ? 'Save Changes' : 'Create Habit'}
+          </Text>
         </AnimatedPressable>
+        </AnimatedSection>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -447,16 +453,14 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: 10,
     marginBottom: 40,
-    borderRadius: radii.card,
-    overflow: 'hidden',
-  },
-  saveButtonGradient: {
+    borderRadius: radii.button,
+    backgroundColor: colors.accentA,
     paddingVertical: 16,
     alignItems: 'center',
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   reminderRow: {

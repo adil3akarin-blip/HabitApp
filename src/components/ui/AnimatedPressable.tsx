@@ -1,11 +1,12 @@
 import React from 'react';
-import { Pressable, ViewStyle, StyleProp } from 'react-native';
+import { Pressable, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated';
+import { spring, timing } from '../../motion/tokens';
 
 const AnimatedPressableView = Animated.createAnimatedComponent(Pressable);
 
@@ -25,7 +26,7 @@ export default function AnimatedPressable({
   onLongPress,
   disabled,
   style,
-  scaleValue = 0.96,
+  scaleValue = 0.97,
   activeOpacity = 1,
 }: AnimatedPressableProps) {
   const scale = useSharedValue(1);
@@ -37,15 +38,15 @@ export default function AnimatedPressable({
   }));
 
   const handlePressIn = () => {
-    scale.value = withTiming(scaleValue, { duration: 100 });
+    scale.value = withTiming(scaleValue, timing.snappy);
     if (activeOpacity < 1) {
-      opacity.value = withTiming(activeOpacity, { duration: 100 });
+      opacity.value = withTiming(activeOpacity, timing.snappy);
     }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-    opacity.value = withTiming(1, { duration: 100 });
+    scale.value = withSpring(1, spring.snappy);
+    opacity.value = withSpring(1, spring.tight);
   };
 
   return (

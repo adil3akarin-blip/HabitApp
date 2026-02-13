@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, ViewStyle, StyleSheet } from 'react-native';
-import { colors, radii, shadow } from '../../theme/tokens';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+import { colors, radii, shadowLight } from '../../theme/tokens';
 
 interface GlassSurfaceProps {
   children: React.ReactNode;
@@ -13,10 +13,10 @@ export default function GlassSurface({ children, style }: GlassSurfaceProps) {
 
 const styles = StyleSheet.create({
   surface: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.bgCard,
     borderColor: colors.border,
     borderWidth: 1,
     borderRadius: radii.card,
-    ...shadow,
+    ...shadowLight,
   },
 });

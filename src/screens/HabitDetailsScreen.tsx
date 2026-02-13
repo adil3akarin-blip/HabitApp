@@ -1,21 +1,22 @@
-import React, { useState, useLayoutEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { format, addMonths, subMonths } from 'date-fns';
+import { addMonths, endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
-import { useHabitsStore } from '../state/useHabitsStore';
+import AnimatedSection from '../components/AnimatedSection';
 import CalendarMonth from '../components/CalendarMonth';
-import { computeStreak, computeLongestStreak } from '../domain/streaks';
-import { todayISO } from '../domain/dates';
-import { cancelHabitReminder } from '../domain/notifications';
-import { colors, radii, shadow } from '../theme/tokens';
+import AnimatedPressable from '../components/ui/AnimatedPressable';
 import GlassSurface from '../components/ui/GlassSurface';
 import Pill from '../components/ui/Pill';
+import { todayISO, toISODate } from '../domain/dates';
+import { computeGoalProgress } from '../domain/goals';
+import { computeLongestStreak, computeStreak } from '../domain/streaks';
+import { useHabitsStore } from '../state/useHabitsStore';
+import { colors, radii } from '../theme/tokens';
 import { hapticWarning } from '../utils/haptics';
-import AnimatedPressable from '../components/ui/AnimatedPressable';
 
 type HabitDetailsScreenProps = {
   route: RouteProp<HomeStackParamList, 'HabitDetails'>;
@@ -24,12 +25,79 @@ type HabitDetailsScreenProps = {
 
 export default function HabitDetailsScreen({ route, navigation }: HabitDetailsScreenProps) {
   const { habitId } = route.params;
-  const { habits, completionsByHabitId, toggleDate, archiveHabit, deleteHabit } = useHabitsStore();
+  const { habits, completionsByHabitId, countsByHabitId, toggleDate, deleteHabit } = useHabitsStore();
   
   const habit = habits.find((h) => h.id === habitId);
   const completions = completionsByHabitId[habitId] || new Set<string>();
+  const counts = countsByHabitId[habitId] || {};
+  const todayCountValue = counts[todayISO()] || 0;
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const isDailyMulti = habit ? habit.goalPeriod === 'day' && habit.goalTarget > 1 : false;
+
+  const calendarActiveDates = useMemo(() => {
+    if (!isDailyMulti || !habit) return completions;
+    const filtered = new Set<string>();
+    for (const dateISO of completions) {
+      if ((counts[dateISO] || 0) >= habit.goalTarget) {
+        filtered.add(dateISO);
+      }
+    }
+    return filtered;
+  }, [completions, counts, isDailyMulti, habit?.goalTarget]);
+
+  const currentStreak = useMemo(() => {
+    if (!habit) return 0;
+    return computeStreak(habit, calendarActiveDates, todayISO());
+  }, [habit, calendarActiveDates]);
+
+  const longestStreak = useMemo(() => {
+    return computeLongestStreak(calendarActiveDates);
+  }, [calendarActiveDates]);
+
+  const goalProgress = useMemo(() => {
+    if (!habit) return { done: 0, target: 1, isComplete: false, periodLabel: 'today' };
+    return computeGoalProgress(habit, completions, todayISO(), todayCountValue);
+  }, [habit, completions, todayCountValue]);
+
+  const progressPercent = Math.min(goalProgress.done / goalProgress.target, 1);
+  const progressWidth = useSharedValue(progressPercent);
+
+  useEffect(() => {
+    progressWidth.value = withTiming(progressPercent, { duration: 200 });
+  }, [progressPercent]);
+
+  const progressBarStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value * 100}%`,
+  }));
+
+  const goalLabel = useMemo(() => {
+    if (!habit) return '';
+    if (habit.goalTarget === 1 && habit.goalPeriod === 'day') return 'Goal: daily';
+    const periodMap = { day: 'day', week: 'week', month: 'month' };
+    return `Goal: ${habit.goalTarget}× per ${periodMap[habit.goalPeriod]}`;
+  }, [habit?.goalTarget, habit?.goalPeriod]);
+
+  const statusText = useMemo(() => {
+    if (goalProgress.isComplete) {
+      const bonus = goalProgress.done - goalProgress.target;
+      if (bonus > 0) return `✓ Goal reached! (+${bonus} bonus)`;
+      return '✓ Goal reached!';
+    }
+    return `${goalProgress.done} done ${goalProgress.periodLabel}`;
+  }, [goalProgress]);
+
+  const hasCompletionsInMonth = useMemo(() => {
+    const monthStart = toISODate(startOfMonth(currentMonth));
+    const monthEnd = toISODate(endOfMonth(currentMonth));
+    for (const dateISO of calendarActiveDates) {
+      if (dateISO >= monthStart && dateISO <= monthEnd) {
+        return true;
+      }
+    }
+    return false;
+  }, [calendarActiveDates, currentMonth]);
 
   useLayoutEffect(() => {
     if (habit) {
@@ -37,13 +105,14 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
         title: habit.name,
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
-        headerTitleStyle: { color: colors.text },
+        headerTitleStyle: { color: colors.text, fontWeight: '600' },
+        headerShadowVisible: false,
         headerRight: () => (
           <TouchableOpacity
             onPress={() => navigation.navigate('HabitForm', { habitId })}
             style={styles.editButton}
           >
-            <Ionicons name="pencil" size={20} color={colors.accentB} />
+            <Ionicons name="pencil" size={18} color={colors.accentA} />
           </TouchableOpacity>
         ),
       });
@@ -70,103 +139,102 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
     toggleDate(habitId, dateISO);
   };
 
-  const currentStreak = useMemo(() => {
-    return computeStreak(habit, completions, todayISO());
-  }, [habit, completions]);
-
-  const longestStreak = useMemo(() => {
-    return computeLongestStreak(completions);
-  }, [completions]);
-
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.bg, '#0D1117', colors.bg]}
-        style={StyleSheet.absoluteFill}
-      />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: habit.color + '30' }]}>
-            <Ionicons
-              name={habit.icon as keyof typeof Ionicons.glyphMap}
-              size={32}
-              color={habit.color}
-            />
+        <AnimatedSection index={0}>
+          <View style={styles.header}>
+            <View style={[styles.iconContainer, { backgroundColor: habit.color + '18' }]}>
+              <Ionicons
+                name={habit.icon as keyof typeof Ionicons.glyphMap}
+                size={28}
+                color={habit.color}
+              />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.habitName}>{habit.name}</Text>
+              {habit.description ? (
+                <Text style={styles.habitDescription}>{habit.description}</Text>
+              ) : null}
+            </View>
           </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.habitName}>{habit.name}</Text>
-            {habit.description ? (
-              <Text style={styles.habitDescription}>{habit.description}</Text>
-            ) : null}
-          </View>
-        </View>
+        </AnimatedSection>
 
+        <AnimatedSection index={1}>
         <View style={styles.pillsRow}>
           <Pill
             label="streak"
             value={currentStreak}
-            icon={<Ionicons name="flame" size={14} color={colors.accentA} />}
+            icon={<Ionicons name="flame" size={14} color={habit.color} />}
           />
           <Pill
             label="best"
             value={longestStreak}
-            icon={<Ionicons name="trophy" size={14} color={colors.accentB} />}
+            icon={<Ionicons name="trophy" size={14} color={colors.accentA} />}
           />
           <Pill
             label="total"
-            value={completions.size}
-            icon={<Ionicons name="checkmark-circle" size={14} color={habit.color} />}
+            value={calendarActiveDates.size}
+            icon={<Ionicons name="checkmark-circle" size={14} color={colors.success} />}
           />
         </View>
+        </AnimatedSection>
 
+        <AnimatedSection index={2}>
+        <GlassSurface style={styles.goalSection}>
+          <Text style={styles.goalLabel}>{goalLabel}</Text>
+          <View style={styles.progressRow}>
+            <View style={styles.progressTrack}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  { backgroundColor: habit.color },
+                  progressBarStyle,
+                ]}
+              />
+            </View>
+            <Text style={styles.progressCount}>
+              {goalProgress.done}/{goalProgress.target}
+            </Text>
+          </View>
+          <Text
+            style={[
+              styles.goalStatus,
+              goalProgress.isComplete && { color: habit.color },
+            ]}
+          >
+            {statusText}
+          </Text>
+        </GlassSurface>
+        </AnimatedSection>
+
+        <AnimatedSection index={3}>
         <GlassSurface style={styles.calendarSection}>
           <View style={styles.monthHeader}>
             <TouchableOpacity onPress={handlePrevMonth} style={styles.monthButton}>
-              <Ionicons name="chevron-back" size={24} color={colors.accentB} />
+              <Ionicons name="chevron-back" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.monthTitle}>
               {format(currentMonth, 'MMMM yyyy')}
             </Text>
             <TouchableOpacity onPress={handleNextMonth} style={styles.monthButton}>
-              <Ionicons name="chevron-forward" size={24} color={colors.accentB} />
+              <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <CalendarMonth
             month={currentMonth}
-            activeDates={completions}
+            activeDates={calendarActiveDates}
             color={habit.color}
             onToggleDate={handleToggleDate}
           />
         </GlassSurface>
+        </AnimatedSection>
 
-        <Text style={styles.hint}>Tap any day to toggle completion</Text>
-
-        <AnimatedPressable
-          style={styles.archiveButton}
-          onPress={() => {
-            Alert.alert(
-              'Archive Habit',
-              'Are you sure you want to archive this habit? It will be hidden from your Home screen.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Archive',
-                  style: 'destructive',
-                  onPress: async () => {
-                    hapticWarning();
-                    await archiveHabit(habitId);
-                    navigation.goBack();
-                  },
-                },
-              ]
-            );
-          }}
-          scaleValue={0.98}
-        >
-          <Ionicons name="archive-outline" size={20} color={colors.danger} />
-          <Text style={styles.archiveButtonText}>Archive Habit</Text>
-        </AnimatedPressable>
+        <AnimatedSection index={4}>
+        {!hasCompletionsInMonth ? (
+          <Text style={styles.hint}>Tip: Tap a day to mark it done.</Text>
+        ) : <View style={{ height: 12 }} />}
 
         <AnimatedPressable
           style={styles.deleteButton}
@@ -182,9 +250,6 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
                   onPress: async () => {
                     hapticWarning();
                     try {
-                      if (habit.reminderNotifId) {
-                        await cancelHabitReminder(habit.reminderNotifId);
-                      }
                       await deleteHabit(habitId);
                       navigation.goBack();
                     } catch (error) {
@@ -197,9 +262,10 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
           }}
           scaleValue={0.98}
         >
-          <Ionicons name="trash-outline" size={20} color={colors.danger} />
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.deleteButtonText}>Delete Habit</Text>
         </AnimatedPressable>
+        </AnimatedSection>
       </ScrollView>
     </View>
   );
@@ -220,9 +286,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -232,12 +298,13 @@ const styles = StyleSheet.create({
   },
   habitName: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text,
+    letterSpacing: -0.4,
   },
   habitDescription: {
     fontSize: 14,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: 4,
   },
   editButton: {
@@ -245,15 +312,57 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 40,
   },
   pillsRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 16,
+  },
+  goalSection: {
+    marginHorizontal: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  goalLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    letterSpacing: -0.1,
+    marginBottom: 10,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.glassStrong,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    minWidth: 2,
+  },
+  progressCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.3,
+    minWidth: 30,
+  },
+  goalStatus: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textFaint,
+    marginTop: 8,
   },
   calendarSection: {
     marginHorizontal: 16,
@@ -269,50 +378,32 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   monthTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: colors.text,
+    letterSpacing: -0.2,
   },
   hint: {
     fontSize: 12,
+    fontWeight: '500',
     color: colors.textFaint,
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 20,
-  },
-  archiveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    borderRadius: radii.card,
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  archiveButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.danger,
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 14,
     marginHorizontal: 20,
     marginBottom: 40,
     borderRadius: radii.card,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.danger + '12',
   },
   deleteButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: colors.danger,
   },

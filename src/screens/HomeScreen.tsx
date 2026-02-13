@@ -1,24 +1,28 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { HomeStackParamList } from '../app/navigation/HomeStack';
-import { useHabitsStore } from '../state/useHabitsStore';
-import HabitCard from '../components/HabitCard';
-import { toISODate, todayISO } from '../domain/dates';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { subDays } from 'date-fns';
-import { Habit } from '../domain/models';
-import { colors } from '../theme/tokens';
-import GlassHeader from '../components/ui/GlassHeader';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { HomeStackParamList } from '../app/navigation/HomeStack';
+import AnimatedListItem from '../components/AnimatedListItem';
+import AnimatedSection from '../components/AnimatedSection';
+import HabitCard from '../components/HabitCard';
 import AnimatedPressable from '../components/ui/AnimatedPressable';
+import GlassHeader from '../components/ui/GlassHeader';
+import GlassSurface from '../components/ui/GlassSurface';
+import { toISODate, todayISO } from '../domain/dates';
+import { Habit } from '../domain/models';
+import { useHabitsStore } from '../state/useHabitsStore';
+import { colors, radii } from '../theme/tokens';
+import { hapticSuccess } from '../utils/haptics';
 
 type HomeScreenProps = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'Home'>;
 };
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { habits, isLoading, refresh, toggleToday, completionsByHabitId, gridRangeDays } = useHabitsStore();
+  const { habits, isLoading, refresh, toggleToday, incrementToday, resetTodayCount, completionsByHabitId, countsByHabitId, gridRangeDays, seedSampleHabits } = useHabitsStore();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const { startISO, endISO } = useMemo(() => {
     const end = new Date();
@@ -33,38 +37,96 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     const today = todayISO();
     let done = 0;
     habits.forEach((h) => {
-      const completions = completionsByHabitId[h.id];
-      if (completions?.has(today)) done++;
+      const isDailyMulti = h.goalPeriod === 'day' && h.goalTarget > 1;
+      if (isDailyMulti) {
+        const count = countsByHabitId[h.id]?.[today] || 0;
+        if (count >= h.goalTarget) done++;
+      } else {
+        const completions = completionsByHabitId[h.id];
+        if (completions?.has(today)) done++;
+      }
     });
     return `${done}/${habits.length} done today`;
-  }, [habits, completionsByHabitId]);
+  }, [habits, completionsByHabitId, countsByHabitId]);
 
   useEffect(() => {
     refresh();
   }, []);
 
   const renderHabitCard = useCallback(
-    ({ item: habit }: { item: Habit }) => {
+    ({ item: habit, index }: { item: Habit; index: number }) => {
       const completions = completionsByHabitId[habit.id] || new Set<string>();
+      const counts = countsByHabitId[habit.id] || {};
+      const today = todayISO();
       return (
-        <HabitCard
-          habit={habit}
-          completions={completions}
-          startISO={startISO}
-          endISO={endISO}
-          onToggleToday={() => toggleToday(habit.id)}
-          onPress={() => navigation.navigate('HabitDetails', { habitId: habit.id })}
-          onLongPress={() => navigation.navigate('HabitForm', { habitId: habit.id })}
-        />
+        <AnimatedListItem index={index}>
+          <HabitCard
+            habit={habit}
+            completions={completions}
+            counts={counts}
+            todayCount={counts[today] || 0}
+            startISO={startISO}
+            endISO={endISO}
+            onToggleToday={() => toggleToday(habit.id)}
+            onIncrementToday={() => incrementToday(habit.id)}
+            onResetToday={() => resetTodayCount(habit.id)}
+            onPress={() => navigation.navigate('HabitDetails', { habitId: habit.id })}
+            onLongPress={() => navigation.navigate('HabitForm', { habitId: habit.id })}
+          />
+        </AnimatedListItem>
       );
     },
-    [completionsByHabitId, startISO, endISO, toggleToday, navigation]
+    [completionsByHabitId, countsByHabitId, startISO, endISO, toggleToday, incrementToday, resetTodayCount, navigation]
   );
+
+  const handleSeedSamples = async () => {
+    setIsSeeding(true);
+    try {
+      await seedSampleHabits();
+      hapticSuccess();
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>No habits yet</Text>
-      <Text style={styles.emptySubtext}>Tap the + button to create your first habit</Text>
+      <AnimatedSection index={0} style={{ width: '100%' }}>
+      <GlassSurface style={styles.emptyCard}>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="leaf-outline" size={28} color={colors.accentA} />
+        </View>
+        <Text style={styles.emptyTitle}>No habits yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Start building consistency.{'\n'}Create your first habit in seconds.
+        </Text>
+        
+        <AnimatedPressable
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('HabitForm')}
+          scaleValue={0.98}
+        >
+          <Ionicons name="add" size={18} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.primaryButtonText}>Create habit</Text>
+        </AnimatedPressable>
+
+        <AnimatedPressable
+          style={styles.secondaryButton}
+          onPress={handleSeedSamples}
+          scaleValue={0.98}
+          disabled={isSeeding}
+        >
+          {isSeeding ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <>
+              <Ionicons name="flash-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
+              <Text style={styles.secondaryButtonText}>Add sample habits</Text>
+            </>
+          )}
+        </AnimatedPressable>
+      </GlassSurface>
+      </AnimatedSection>
     </View>
   );
 
@@ -78,10 +140,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.bg, '#0D1117', colors.bg]}
-        style={StyleSheet.absoluteFill}
-      />
       <GlassHeader
         title="Habits"
         subtitle={habits.length > 0 ? todaySummary : undefined}
@@ -91,14 +149,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             onPress={() => navigation.navigate('HabitForm')}
             scaleValue={0.9}
           >
-            <LinearGradient
-              colors={[colors.accentA, colors.accentB]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.addButtonGradient}
-            >
-              <Ionicons name="add" size={22} color="#fff" />
-            </LinearGradient>
+            <Ionicons name="add" size={22} color={colors.bg} />
           </AnimatedPressable>
         }
       />
@@ -137,27 +188,67 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
-  emptyText: {
+  emptyCard: {
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+  },
+  emptyIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.accentA + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
+    letterSpacing: -0.3,
     marginBottom: 8,
   },
-  emptySubtext: {
+  emptySubtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  primaryButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentA,
+    borderRadius: radii.button,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  primaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  secondaryButtonText: {
     fontSize: 14,
-    color: colors.textMuted,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   addButton: {
-    shadowColor: colors.accentA,
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  addButtonGradient: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 10,
+    backgroundColor: colors.accentA,
     justifyContent: 'center',
     alignItems: 'center',
   },

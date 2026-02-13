@@ -1,22 +1,22 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
 import {
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  isSameMonth,
-  isSameDay,
-  format,
+    addDays,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isSameDay,
+    isSameMonth,
+    startOfMonth,
+    startOfWeek,
 } from 'date-fns';
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 import { toISODate } from '../domain/dates';
 import { colors } from '../theme/tokens';
 import { hapticTap } from '../utils/haptics';
@@ -37,6 +37,7 @@ interface DayCell {
   dateISO: string;
   isCurrentMonth: boolean;
   isToday: boolean;
+  isFuture: boolean;
 }
 
 interface DayCellComponentProps {
@@ -53,12 +54,14 @@ const DayCellComponent = React.memo(function DayCellComponent({
   onToggle,
 }: DayCellComponentProps) {
   const scale = useSharedValue(1);
+  const isDisabled = !day.isCurrentMonth || day.isFuture;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const handlePress = () => {
+    if (isDisabled) return;
     hapticTap();
     scale.value = withSequence(
       withTiming(0.85, { duration: 60 }),
@@ -74,16 +77,18 @@ const DayCellComponent = React.memo(function DayCellComponent({
           styles.dayContent,
           isActive && { backgroundColor: color },
           day.isToday && !isActive && styles.todayBorder,
-          day.isToday && isActive && { borderColor: '#fff', borderWidth: 2 },
+          day.isToday && isActive && { borderColor: colors.text, borderWidth: 1.5 },
+          day.isFuture && day.isCurrentMonth && styles.dayContentFuture,
           animatedStyle,
         ]}
         onPress={handlePress}
-        disabled={!day.isCurrentMonth}
+        disabled={isDisabled}
       >
         <Text
           style={[
             styles.dayText,
             !day.isCurrentMonth && styles.dayTextMuted,
+            day.isFuture && day.isCurrentMonth && styles.dayTextFuture,
             isActive && styles.dayTextActive,
           ]}
         >
@@ -112,6 +117,7 @@ function CalendarMonth({ month, activeDates, color, onToggleDate }: CalendarMont
         dateISO: toISODate(currentDate),
         isCurrentMonth: isSameMonth(currentDate, month),
         isToday: isSameDay(currentDate, today),
+        isFuture: currentDate > today,
       });
       currentDate = addDays(currentDate, 1);
     }
@@ -186,8 +192,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   todayBorder: {
-    borderWidth: 2,
-    borderColor: colors.accentB,
+    borderWidth: 1.5,
+    borderColor: colors.accentA,
   },
   dayText: {
     fontSize: 14,
@@ -200,5 +206,11 @@ const styles = StyleSheet.create({
   dayTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  dayContentFuture: {
+    opacity: 0.4,
+  },
+  dayTextFuture: {
+    color: colors.textFaint,
   },
 });

@@ -1,22 +1,41 @@
+// ─── Warm Ink ───────────────────────────────────────────
+// Editorial minimalism · warm charcoal · amber accent
+// ────────────────────────────────────────────────────────
+
 export const colors = {
-  bg: "#070A12",
-  text: "rgba(255,255,255,0.92)",
-  textMuted: "rgba(255,255,255,0.65)",
-  textFaint: "rgba(255,255,255,0.45)",
+  // Backgrounds — warm charcoal, not cold blue-black
+  bg: "#141210",
+  bgElevated: "#1C1A17",
+  bgCard: "#1F1D19",
 
-  glass: "rgba(255,255,255,0.06)",
-  glassStrong: "rgba(255,255,255,0.10)",
-  border: "rgba(255,255,255,0.12)",
+  // Text — warm whites
+  text: "#F5F0E8",
+  textSecondary: "#A8A196",
+  textMuted: "rgba(245,240,232,0.65)",
+  textFaint: "rgba(245,240,232,0.35)",
 
-  accentA: "#7C3AED",
-  accentB: "#22D3EE",
-  danger: "#FB7185",
+  // Surfaces
+  glass: "rgba(245,240,232,0.04)",
+  glassStrong: "rgba(245,240,232,0.08)",
+  border: "rgba(245,240,232,0.08)",
+  borderStrong: "rgba(245,240,232,0.14)",
+
+  // Accent — warm amber/gold
+  accentA: "#E8A838",
+  accentB: "#D4793A",
+
+  // Semantic
+  danger: "#E05C5C",
+  success: "#5CAE7A",
 };
 
 export const radii = {
-  card: 14,
-  modal: 20,
+  xs: 6,
+  card: 12,
+  button: 10,
+  modal: 16,
   pill: 999,
+  circle: 999,
 };
 
 export const spacing = {
@@ -25,35 +44,57 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 48,
 };
 
 export const typography = {
+  hero: {
+    fontSize: 34,
+    fontWeight: "800" as const,
+    letterSpacing: -0.8,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "700" as const,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: "600" as const,
+    letterSpacing: -0.2,
   },
   body: {
     fontSize: 16,
     fontWeight: "400" as const,
   },
+  bodyMedium: {
+    fontSize: 15,
+    fontWeight: "500" as const,
+  },
   caption: {
-    fontSize: 14,
-    fontWeight: "400" as const,
+    fontSize: 13,
+    fontWeight: "500" as const,
   },
   small: {
-    fontSize: 12,
-    fontWeight: "400" as const,
+    fontSize: 11,
+    fontWeight: "500" as const,
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
   },
 };
 
 export const shadow = {
   shadowColor: "#000",
-  shadowOpacity: 0.25,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 6,
+  shadowOpacity: 0.3,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 4,
+};
+
+export const shadowLight = {
+  shadowColor: "#000",
+  shadowOpacity: 0.15,
+  shadowRadius: 6,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
 };

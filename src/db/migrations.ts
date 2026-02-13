@@ -59,5 +59,14 @@ export async function runMigrations(): Promise<void> {
     // Column already exists
   }
 
+  // Create app_meta table for storing app settings/flags
+  await execAsync(`
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+  `);
+
   console.log("migrations ok");
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors, radii } from '../../theme/tokens';
 
 interface PillProps {
@@ -22,24 +22,25 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.glassStrong,
+    backgroundColor: colors.bgElevated,
     borderColor: colors.border,
     borderWidth: 1,
     borderRadius: radii.pill,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
+    paddingVertical: 7,
+    gap: 5,
   },
   icon: {
-    marginRight: 2,
+    marginRight: 1,
   },
   value: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
   },
   label: {
     fontSize: 12,
-    color: colors.textMuted,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
 });

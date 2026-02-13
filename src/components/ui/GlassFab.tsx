@@ -1,7 +1,6 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { colors } from '../../theme/tokens';
 import AnimatedPressable from './AnimatedPressable';
 
@@ -12,14 +11,9 @@ interface GlassFabProps {
 export default function GlassFab({ onPress }: GlassFabProps) {
   return (
     <AnimatedPressable style={styles.container} onPress={onPress} scaleValue={0.9}>
-      <LinearGradient
-        colors={[colors.accentA, colors.accentB]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </LinearGradient>
+      <View style={styles.button}>
+        <Ionicons name="add" size={26} color="#fff" />
+      </View>
     </AnimatedPressable>
   );
 }
@@ -30,15 +24,16 @@ const styles = StyleSheet.create({
     bottom: 24,
     right: 20,
     shadowColor: colors.accentA,
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    elevation: 6,
   },
-  gradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  button: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.accentA,
     justifyContent: 'center',
     alignItems: 'center',
   },

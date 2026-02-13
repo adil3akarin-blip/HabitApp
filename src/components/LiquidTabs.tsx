@@ -1,41 +1,39 @@
 /**
- * LiquidTabs - iOS 26 Liquid Glass Style Tabs Component
+ * LiquidTabs - Warm Ink Tab Bar
  * 
- * Cross-platform (iOS, Android, Web) tabs with frosted glass effect,
- * animated sliding indicator, and full accessibility support.
+ * Clean, minimal tab bar with warm charcoal surface and amber active indicator.
+ * Cross-platform with animated sliding indicator and accessibility support.
  */
 
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ComponentProps,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
 } from 'react';
 import {
-    AccessibilityRole,
-    LayoutChangeEvent,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useColorScheme,
-    View,
-    type ViewStyle
+  AccessibilityRole,
+  LayoutChangeEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+  type ViewStyle
 } from 'react-native';
 import Animated, {
-    useAnimatedStyle,
-    useReducedMotion,
-    useSharedValue,
-    withSpring,
-    withTiming
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
 
 // ============================================================================
@@ -44,66 +42,34 @@ import Animated, {
 
 const TOKENS = {
   light: {
-    // Glass base
-    glassBackground: 'rgba(255, 255, 255, 0.18)',
-    glassBorder: 'rgba(255, 255, 255, 0.35)',
-    glassHighlight: 'rgba(255, 255, 255, 0.5)',
-    glassShadow: 'rgba(0, 0, 0, 0.08)',
-    
-    // Indicator (active pill)
-    indicatorBackground: 'rgba(255, 255, 255, 0.45)',
-    indicatorBorder: 'rgba(255, 255, 255, 0.6)',
-    indicatorShadow: 'rgba(0, 0, 0, 0.12)',
-    
-    // Text
+    surface: 'rgba(255, 255, 255, 0.92)',
+    surfaceBorder: 'rgba(0, 0, 0, 0.06)',
+    surfaceShadow: 'rgba(0, 0, 0, 0.08)',
+    indicatorBg: 'rgba(0, 0, 0, 0.08)',
     textActive: 'rgba(0, 0, 0, 0.9)',
-    textInactive: 'rgba(0, 0, 0, 0.55)',
-    textDisabled: 'rgba(0, 0, 0, 0.25)',
-    
-    // Specular highlights
-    specularStart: 'rgba(255, 255, 255, 0.7)',
-    specularEnd: 'rgba(255, 255, 255, 0)',
-    
-    // Inner glow
-    innerGlowStart: 'rgba(255, 255, 255, 0.3)',
-    innerGlowEnd: 'rgba(255, 255, 255, 0)',
+    textInactive: 'rgba(0, 0, 0, 0.4)',
+    textDisabled: 'rgba(0, 0, 0, 0.2)',
   },
   dark: {
-    // Glass base
-    glassBackground: 'rgba(255, 255, 255, 0.08)',
-    glassBorder: 'rgba(255, 255, 255, 0.15)',
-    glassHighlight: 'rgba(255, 255, 255, 0.2)',
-    glassShadow: 'rgba(0, 0, 0, 0.4)',
-    
-    // Indicator (active pill)
-    indicatorBackground: 'rgba(255, 255, 255, 0.15)',
-    indicatorBorder: 'rgba(255, 255, 255, 0.25)',
-    indicatorShadow: 'rgba(0, 0, 0, 0.5)',
-    
-    // Text
-    textActive: 'rgba(255, 255, 255, 0.95)',
-    textInactive: 'rgba(255, 255, 255, 0.55)',
-    textDisabled: 'rgba(255, 255, 255, 0.25)',
-    
-    // Specular highlights
-    specularStart: 'rgba(255, 255, 255, 0.25)',
-    specularEnd: 'rgba(255, 255, 255, 0)',
-    
-    // Inner glow
-    innerGlowStart: 'rgba(255, 255, 255, 0.1)',
-    innerGlowEnd: 'rgba(255, 255, 255, 0)',
+    surface: '#1F1D19',
+    surfaceBorder: 'rgba(245, 240, 232, 0.08)',
+    surfaceShadow: 'rgba(0, 0, 0, 0.5)',
+    indicatorBg: 'rgba(232, 168, 56, 0.15)',
+    textActive: '#F5F0E8',
+    textInactive: 'rgba(245, 240, 232, 0.4)',
+    textDisabled: 'rgba(245, 240, 232, 0.2)',
   },
 } as const;
 
 const DIMENSIONS = {
-  minHeight: 48,
-  borderRadius: 999, // Pill shape
+  minHeight: 52,
+  borderRadius: 16,
+  indicatorBorderRadius: 12,
   indicatorPadding: 4,
-  tabPaddingHorizontal: 16,
-  tabPaddingVertical: 10,
-  blurIntensity: 40,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
+  tabPaddingHorizontal: 20,
+  tabPaddingVertical: 12,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 6 },
 } as const;
 
 const ANIMATION = {
@@ -130,7 +96,7 @@ const ANIMATION = {
 // ============================================================================
 
 type Variant = 'light' | 'dark' | 'auto';
-type TokenSet = typeof TOKENS.light | typeof TOKENS.dark;
+type TokenSet = typeof TOKENS['light'] | typeof TOKENS['dark'];
 
 interface TabLayout {
   x: number;
@@ -188,113 +154,6 @@ const useTabsContext = () => {
   return context;
 };
 
-// ============================================================================
-// Web-specific Blur Component
-// ============================================================================
-
-const WebGlassBackground: React.FC<{
-  tokens: TokenSet;
-  style?: ViewStyle;
-  children?: ReactNode;
-}> = ({ tokens, style, children }) => {
-  // On web, use CSS backdrop-filter for real blur
-  const webStyle = Platform.select({
-    web: {
-      // @ts-ignore - web-specific CSS property
-      backdropFilter: 'blur(40px)',
-      WebkitBackdropFilter: 'blur(40px)',
-    } as ViewStyle,
-    default: {},
-  });
-
-  return (
-    <View
-      style={[
-        {
-          backgroundColor: tokens.glassBackground,
-          borderRadius: DIMENSIONS.borderRadius,
-          overflow: 'hidden',
-        },
-        webStyle,
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-};
-
-// ============================================================================
-// Glass Background Component (Platform-aware)
-// ============================================================================
-
-const GlassBackground: React.FC<{
-  tokens: TokenSet;
-  variant: Variant;
-  children?: ReactNode;
-}> = ({ tokens, variant, children }) => {
-  const blurTint = variant === 'dark' ? 'dark' : 'light';
-
-  if (Platform.OS === 'web') {
-    return (
-      <WebGlassBackground tokens={tokens}>
-        {/* Specular highlight gradient */}
-        <LinearGradient
-          colors={[tokens.specularStart, tokens.specularEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        {/* Inner glow */}
-        <LinearGradient
-          colors={[tokens.innerGlowStart, tokens.innerGlowEnd]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        {children}
-      </WebGlassBackground>
-    );
-  }
-
-  // iOS/Android: Use BlurView
-  return (
-    <View style={styles.glassContainer}>
-      <BlurView
-        intensity={DIMENSIONS.blurIntensity}
-        tint={blurTint}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Fallback background for when blur isn't fully supported */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: tokens.glassBackground },
-        ]}
-        pointerEvents="none"
-      />
-      {/* Specular highlight gradient */}
-      <LinearGradient
-        colors={[tokens.specularStart, tokens.specularEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      {/* Inner glow */}
-      <LinearGradient
-        colors={[tokens.innerGlowStart, tokens.innerGlowEnd]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.5 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      {children}
-    </View>
-  );
-};
 
 // ============================================================================
 // Animated Indicator (Glass Pill)
@@ -302,14 +161,12 @@ const GlassBackground: React.FC<{
 
 const AnimatedIndicator: React.FC<{
   tokens: TokenSet;
-  variant: Variant;
   tabLayouts: Map<string, TabLayout>;
   activeValue: string;
   reducedMotion: boolean;
-}> = ({ tokens, variant, tabLayouts, activeValue, reducedMotion }) => {
+}> = ({ tokens, tabLayouts, activeValue, reducedMotion }) => {
   const translateX = useSharedValue(0);
   const width = useSharedValue(0);
-  const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
@@ -332,45 +189,20 @@ const AnimatedIndicator: React.FC<{
   }, [activeValue, tabLayouts, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { scaleY: scale.value },
-    ],
+    transform: [{ translateX: translateX.value }],
     width: width.value,
     opacity: opacity.value,
   }));
-
-  const blurTint = variant === 'dark' ? 'dark' : 'light';
 
   return (
     <Animated.View
       style={[
         styles.indicator,
-        {
-          backgroundColor: tokens.indicatorBackground,
-          borderColor: tokens.indicatorBorder,
-          shadowColor: tokens.indicatorShadow,
-        },
+        { backgroundColor: tokens.indicatorBg },
         animatedStyle,
       ]}
       pointerEvents="none"
-    >
-      {Platform.OS !== 'web' && (
-        <BlurView
-          intensity={30}
-          tint={blurTint}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      {/* Indicator specular highlight */}
-      <LinearGradient
-        colors={[tokens.specularStart, 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFill, { opacity: 0.5 }]}
-        pointerEvents="none"
-      />
-    </Animated.View>
+    />
   );
 };
 
@@ -497,58 +329,35 @@ export const LiquidTabsList: React.FC<LiquidTabsListProps> = ({
       style={[
         styles.listContainer,
         {
-          borderColor: tokens.glassBorder,
-          shadowColor: tokens.glassShadow,
+          backgroundColor: tokens.surface,
+          borderColor: tokens.surfaceBorder,
+          shadowColor: tokens.surfaceShadow,
         },
         style,
       ]}
       onLayout={handleContainerLayout}
       {...webProps}
     >
-      <GlassBackground tokens={tokens} variant={variant}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          scrollEnabled={needsScroll}
-          contentContainerStyle={styles.listContent}
-          onContentSizeChange={(w) => setContentWidth(w)}
-        >
-          <View style={styles.tabsRow} onLayout={handleContentLayout}>
-            {/* Animated indicator behind tabs */}
-            {layoutsReady && tabLayouts.size > 0 && (
-              <AnimatedIndicator
-                tokens={tokens}
-                variant={variant}
-                tabLayouts={tabLayouts}
-                activeValue={value}
-                reducedMotion={reducedMotion}
-              />
-            )}
-            {children}
-          </View>
-        </ScrollView>
-      </GlassBackground>
-      
-      {/* Fade edges when scrollable */}
-      {needsScroll && (
-        <>
-          <LinearGradient
-            colors={['rgba(0,0,0,0.15)', 'transparent']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.fadeLeft}
-            pointerEvents="none"
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.15)']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.fadeRight}
-            pointerEvents="none"
-          />
-        </>
-      )}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEnabled={needsScroll}
+        contentContainerStyle={styles.listContent}
+        onContentSizeChange={(w) => setContentWidth(w)}
+      >
+        <View style={styles.tabsRow} onLayout={handleContentLayout}>
+          {layoutsReady && tabLayouts.size > 0 && (
+            <AnimatedIndicator
+              tokens={tokens}
+              tabLayouts={tabLayouts}
+              activeValue={value}
+              reducedMotion={reducedMotion}
+            />
+          )}
+          {children}
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -574,7 +383,6 @@ export const LiquidTabsTrigger: React.FC<LiquidTabsTriggerProps> = ({
 
   const isActive = value === tabValue;
   const pressScale = useSharedValue(1);
-  const hoverOpacity = useSharedValue(0);
 
   const handleLayout = useCallback(
     (e: LayoutChangeEvent) => {
@@ -602,24 +410,8 @@ export const LiquidTabsTrigger: React.FC<LiquidTabsTriggerProps> = ({
     pressScale.value = withTiming(1, config);
   }, [reducedMotion]);
 
-  const handleHoverIn = useCallback(() => {
-    if (!disabled && Platform.OS === 'web') {
-      hoverOpacity.value = withTiming(1, { duration: 150 });
-    }
-  }, [disabled]);
-
-  const handleHoverOut = useCallback(() => {
-    if (Platform.OS === 'web') {
-      hoverOpacity.value = withTiming(0, { duration: 150 });
-    }
-  }, []);
-
   const animatedContainerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
-  }));
-
-  const animatedHoverStyle = useAnimatedStyle(() => ({
-    opacity: hoverOpacity.value,
   }));
 
   const textColor = disabled
@@ -653,27 +445,17 @@ export const LiquidTabsTrigger: React.FC<LiquidTabsTriggerProps> = ({
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        onHoverIn={handleHoverIn}
-        onHoverOut={handleHoverOut}
         disabled={disabled}
         style={styles.trigger}
         {...accessibilityProps}
         {...webProps}
       >
-        {/* Hover highlight (web only) */}
-        {Platform.OS === 'web' && !isActive && (
-          <Animated.View
-            style={[
-              styles.hoverHighlight,
-              { backgroundColor: tokens.glassHighlight },
-              animatedHoverStyle,
-            ]}
-            pointerEvents="none"
-          />
-        )}
-        
         <View style={styles.triggerContent}>
-          {icon && <View style={styles.iconContainer}>{icon}</View>}
+          {icon && (
+            <View style={[styles.iconContainer, isActive && styles.iconContainerActive]}>
+              {icon}
+            </View>
+          )}
           {(label || children) && (
             <Text
               style={[
@@ -741,16 +523,11 @@ const styles = StyleSheet.create({
   root: {
     width: '100%',
   },
-  glassContainer: {
-    borderRadius: DIMENSIONS.borderRadius,
-    overflow: 'hidden',
-  },
   listContainer: {
     minHeight: DIMENSIONS.minHeight,
     borderRadius: DIMENSIONS.borderRadius,
     borderWidth: 1,
     overflow: 'hidden',
-    // Shadow
     shadowOffset: DIMENSIONS.shadowOffset,
     shadowOpacity: 1,
     shadowRadius: DIMENSIONS.shadowRadius,
@@ -771,19 +548,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: DIMENSIONS.indicatorPadding,
     bottom: DIMENSIONS.indicatorPadding,
-    borderRadius: DIMENSIONS.borderRadius,
-    borderWidth: 1,
-    overflow: 'hidden',
-    // Shadow for depth
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 4,
+    borderRadius: DIMENSIONS.indicatorBorderRadius,
   },
   trigger: {
     paddingHorizontal: DIMENSIONS.tabPaddingHorizontal,
     paddingVertical: DIMENSIONS.tabPaddingVertical,
-    borderRadius: DIMENSIONS.borderRadius,
+    borderRadius: DIMENSIONS.indicatorBorderRadius,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -791,15 +561,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 7,
   },
   triggerText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
   triggerTextActive: {
-    fontWeight: '600',
+    fontWeight: '700',
   },
   iconContainer: {
     width: 20,
@@ -807,30 +577,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hoverHighlight: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: DIMENSIONS.borderRadius,
+  iconContainerActive: {
+    transform: [{ scale: 1.1 }],
   },
   content: {
     flex: 1,
-  },
-  fadeLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 20,
-    borderTopLeftRadius: DIMENSIONS.borderRadius,
-    borderBottomLeftRadius: DIMENSIONS.borderRadius,
-  },
-  fadeRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 20,
-    borderTopRightRadius: DIMENSIONS.borderRadius,
-    borderBottomRightRadius: DIMENSIONS.borderRadius,
   },
 });
 

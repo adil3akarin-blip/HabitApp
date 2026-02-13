@@ -1,8 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { entrance, timing } from '../../motion/tokens';
 import { colors, typography } from '../../theme/tokens';
 
 interface GlassHeaderProps {
@@ -13,50 +17,57 @@ interface GlassHeaderProps {
 
 export default function GlassHeader({ title, subtitle, rightAction }: GlassHeaderProps) {
   const insets = useSafeAreaInsets();
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(1, timing.dramatic);
+  }, []);
+
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (1 - progress.value) * entrance.slideUpLarge }],
+  }));
+
+  const subtitleStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
 
   return (
-    <BlurView intensity={60} tint="dark" style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={['rgba(124, 58, 237, 0.15)', 'rgba(34, 211, 238, 0.05)', 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       <View style={styles.content}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          <Animated.Text style={[styles.title, titleStyle]}>{title}</Animated.Text>
+          {subtitle && <Animated.Text style={[styles.subtitle, subtitleStyle]}>{subtitle}</Animated.Text>}
         </View>
         {rightAction && <View style={styles.rightAction}>{rightAction}</View>}
       </View>
-    </BlurView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    overflow: 'hidden',
+    backgroundColor: colors.bg,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   titleContainer: {
     flex: 1,
   },
   title: {
-    ...typography.title,
+    ...typography.hero,
     color: colors.text,
   },
   subtitle: {
     ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   rightAction: {
     marginLeft: 16,

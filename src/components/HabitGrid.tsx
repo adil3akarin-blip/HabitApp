@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { generateGridCells, groupCellsByWeek, GridCell } from '../domain/grid';
+import { StyleSheet, View } from 'react-native';
+import { generateGridCells, groupCellsByWeek } from '../domain/grid';
 
-const INACTIVE_CELL_COLOR = 'rgba(255,255,255,0.08)';
+const INACTIVE_CELL_COLOR = 'rgba(245,240,232,0.06)';
 
 interface HabitGridProps {
   startISO: string;
@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   column: {
     flexDirection: 'column',
