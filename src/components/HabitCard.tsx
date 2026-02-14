@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -13,11 +13,23 @@ import { Habit } from '../domain/models';
 import { computeLongestStreak, computeStreak } from '../domain/streaks';
 import { press, spring, timing } from '../motion/tokens';
 import { colors, glowShadow, radii } from '../theme/tokens';
+import CheckDraw from '../ui/svg/CheckDraw';
+import ConfettiBurst, { ConfettiBurstRef } from '../ui/svg/ConfettiBurst';
+import StreakFlame from '../ui/svg/StreakFlame';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 import HabitGrid from './HabitGrid';
 import AnimatedPressable from './ui/AnimatedPressable';
 
 const AnimatedPressableView = Animated.createAnimatedComponent(Pressable);
+
+// Streak text color based on level
+function streakTextColor(streak: number): { color: string } {
+  if (streak < 1) return { color: '#9CA3AF' };
+  if (streak < 7) return { color: '#F59E0B' };
+  if (streak < 30) return { color: '#EA580C' };
+  if (streak < 100) return { color: '#3B82F6' };
+  return { color: '#9333EA' };
+}
 
 interface HabitCardProps {
   habit: Habit;
@@ -76,6 +88,7 @@ function HabitCard({
 
   const toggleScale = useSharedValue(1);
   const fillHeight = useSharedValue(fillPercent);
+  const confettiRef = useRef<ConfettiBurstRef>(null);
 
   // Animate fill height when fillPercent changes
   React.useEffect(() => {
@@ -96,6 +109,7 @@ function HabitCard({
 
     if (willComplete || willToggleOn) {
       hapticSuccess();
+      confettiRef.current?.play();
       // Celebration: compress → overshoot → settle
       toggleScale.value = withSequence(
         withTiming(press.scaleTiny, timing.snappy),
@@ -121,19 +135,20 @@ function HabitCard({
   };
 
   return (
-    <AnimatedPressable
-      style={[
-        styles.container,
-        isCompletedToday && {
-          borderColor: habit.color + '30',
-          ...glowShadow(habit.color, 8, 0.15),
-        },
-      ]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      scaleValue={0.98}
-    >
-      <View style={[styles.accentStrip, { backgroundColor: habit.color, opacity: isCompletedToday ? 1 : 0.2 }]} />
+    <View style={styles.cardWrapper}>
+      <AnimatedPressable
+        style={[
+          styles.container,
+          isCompletedToday && {
+            borderColor: habit.color + '30',
+            ...glowShadow(habit.color, 8, 0.15),
+          },
+        ]}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        scaleValue={0.98}
+      >
+        <View style={[styles.accentStrip, { backgroundColor: habit.color, opacity: isCompletedToday ? 1 : 0.2 }]} />
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: habit.color + '18' }]}>
           <Ionicons
@@ -150,29 +165,37 @@ function HabitCard({
             </Text>
           ) : null}
         </View>
-        <AnimatedPressableView
-          style={[
-            styles.toggleButton,
-            isDailyMulti && !isCompletedToday && { backgroundColor: 'transparent', borderWidth: RING_WIDTH, borderColor: colors.glassStrong },
-            isCompletedToday && { backgroundColor: habit.color },
-            toggleAnimatedStyle,
-          ]}
-          onPress={handleTogglePress}
-        >
-          <Animated.View style={[styles.fillOverlay, { backgroundColor: habit.color }, fillAnimatedStyle]} />
-          <Ionicons
-            name={isCompletedToday ? 'checkmark' : 'add'}
-            size={20}
-            color={isCompletedToday ? '#fff' : colors.textSecondary}
-            style={{ zIndex: 1 }}
-          />
-        </AnimatedPressableView>
+        <View style={{ position: 'relative' }}>
+          <AnimatedPressableView
+            style={[
+              styles.toggleButton,
+              isDailyMulti && !isCompletedToday && { backgroundColor: 'transparent', borderWidth: RING_WIDTH, borderColor: colors.glassStrong },
+              isCompletedToday && { backgroundColor: habit.color },
+              toggleAnimatedStyle,
+            ]}
+            onPress={handleTogglePress}
+          >
+            <Animated.View style={[styles.fillOverlay, { backgroundColor: habit.color }, fillAnimatedStyle]} />
+            {isCompletedToday ? (
+              <View style={{ zIndex: 1 }}>
+                <CheckDraw size={22} stroke="#fff" strokeWidth={2.5} delay={200} />
+              </View>
+            ) : (
+              <Ionicons
+                name="add"
+                size={20}
+                color={colors.textSecondary}
+                style={{ zIndex: 1 }}
+              />
+            )}
+          </AnimatedPressableView>
+        </View>
       </View>
       <View style={styles.bottomRow}>
         <View style={styles.statsColumn}>
           <View style={styles.statItem}>
-            <Ionicons name="flame" size={12} color={colors.danger} style={styles.glowWrap} />
-            <Text style={[styles.statValue, { color: colors.danger }]}>{streak}</Text>
+            <StreakFlame streak={streak} size={16} />
+            <Text style={[styles.statValue, streakTextColor(streak)]}>{streak}</Text>
           </View>
           <View style={styles.statItem}>
             <Ionicons name="trophy" size={12} color={colors.accentA} />
@@ -194,13 +217,28 @@ function HabitCard({
           />
         </View>
       </View>
-    </AnimatedPressable>
+      </AnimatedPressable>
+      <View style={styles.confettiAnchor} pointerEvents="none">
+        <ConfettiBurst
+          ref={confettiRef}
+          colors={[habit.color, '#FFE66D', '#4ECDC4', '#FF6B6B', '#95E1D3']}
+          particleCount={24}
+          duration={1400}
+          spread={120}
+          startVelocity={200}
+        />
+      </View>
+    </View>
   );
 }
 
-export default React.memo(HabitCard);
 
 const styles = StyleSheet.create({
+  cardWrapper: {
+    position: 'relative',
+    marginBottom: 10,
+    zIndex: 1,
+  },
   container: {
     paddingTop: 16,
     paddingRight: 16,
@@ -208,10 +246,15 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
     backgroundColor: colors.bgCard,
     borderRadius: radii.card,
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
+  },
+  confettiAnchor: {
+    position: 'absolute',
+    top: 16,
+    right: 36,
+    zIndex: 9999,
   },
   accentStrip: {
     position: 'absolute',
@@ -303,8 +346,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
 
     // Android glow (more limited)
-    elevation: 16,
+    elevation: 8,
 
     borderRadius: 20,
-  }
+  },
 });
+
+export default HabitCard;

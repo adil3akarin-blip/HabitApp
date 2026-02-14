@@ -1,17 +1,15 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
 import { entrance, timing } from '../../motion/tokens';
 import { colors, typography } from '../../theme/tokens';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+import CheckDraw from '../../ui/svg/CheckDraw';
+import ProgressRing from '../../ui/svg/ProgressRing';
 
 interface GlassHeaderProps {
   title: string;
@@ -24,8 +22,6 @@ interface GlassHeaderProps {
 
 const RING_SIZE = 44;
 const RING_STROKE = 4;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export default function GlassHeader({
   title,
@@ -52,56 +48,27 @@ export default function GlassHeader({
   }));
 
   const showProgress = progressDone !== undefined && progressTotal !== undefined && progressTotal > 0;
-  const progressPercent = showProgress ? Math.min(progressDone! / progressTotal!, 1) : 0;
   const allDone = showProgress && progressDone! >= progressTotal!;
-
-  const ringProgress = useSharedValue(0);
-
-  useEffect(() => {
-    if (showProgress) {
-      ringProgress.value = withTiming(progressPercent, timing.dramatic);
-    }
-  }, [progressPercent]);
-
-  const ringAnimatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: RING_CIRCUMFERENCE * (1 - ringProgress.value),
-  }));
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       <View style={styles.content}>
         {showProgress && (
           <Animated.View style={[styles.ringContainer, titleStyle]}>
-            <Svg width={RING_SIZE} height={RING_SIZE}>
-              <Circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RING_RADIUS}
-                stroke={colors.glassStrong}
-                strokeWidth={RING_STROKE}
-                fill="none"
-              />
-              <AnimatedCircle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RING_RADIUS}
-                stroke={progressColor || colors.accentA}
-                strokeWidth={RING_STROKE}
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE}
-                animatedProps={ringAnimatedProps}
-                transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-              />
-            </Svg>
-            <View style={styles.ringLabel}>
-              <Text style={[
-                styles.ringText,
-                allDone && { color: progressColor || colors.accentA },
-              ]}>
-                {allDone ? '\u2713' : `${progressDone}`}
-              </Text>
-            </View>
+            <ProgressRing
+              value={progressDone!}
+              max={progressTotal!}
+              size={RING_SIZE}
+              strokeWidth={RING_STROKE}
+              trackColor={colors.glassStrong}
+              progressColor={progressColor || colors.accentA}
+            >
+              {allDone ? (
+                <CheckDraw size={18} stroke={progressColor || colors.accentA} strokeWidth={2} delay={120} />
+              ) : (
+                <Text style={styles.ringText}>{progressDone}</Text>
+              )}
+            </ProgressRing>
           </Animated.View>
         )}
         <View style={styles.titleContainer}>
@@ -147,13 +114,6 @@ const styles = StyleSheet.create({
     marginRight: 14,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  ringLabel: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: RING_SIZE,
-    height: RING_SIZE,
   },
   ringText: {
     fontSize: 14,

@@ -11,7 +11,6 @@ import {
   Switch,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { HomeStackParamList } from '../app/navigation/HomeStack';
@@ -29,7 +28,8 @@ import {
 } from '../domain/notifications';
 import { useHabitsStore } from '../state/useHabitsStore';
 import { colors, radii } from '../theme/tokens';
-import { hapticSuccess, hapticTap } from '../utils/haptics';
+import PressFeedback from '../ui/press/PressFeedback';
+import { hapticSuccess } from '../utils/haptics';
 
 type HabitFormScreenProps = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'HabitForm'>;
@@ -250,16 +250,15 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
           <Text style={styles.label}>Goal Period</Text>
           <View style={styles.periodContainer}>
             {GOAL_PERIODS.map((period) => (
-              <TouchableOpacity
+              <PressFeedback
                 key={period.value}
                 style={[
                   styles.periodButton,
                   goalPeriod === period.value && { backgroundColor: color },
                 ]}
-                onPress={() => {
-                  hapticTap();
-                  setGoalPeriod(period.value);
-                }}
+                onPress={() => setGoalPeriod(period.value)}
+                depth={0.92}
+                haptic
               >
                 <Text
                   style={[
@@ -269,7 +268,7 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
                 >
                   {period.label}
                 </Text>
-              </TouchableOpacity>
+              </PressFeedback>
             ))}
           </View>
         </GlassSurface>
@@ -279,16 +278,17 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Target</Text>
           <View style={styles.targetContainer}>
-            <TouchableOpacity
+            <PressFeedback
               style={styles.targetButton}
               onPress={() => {
-                hapticTap();
                 const current = parseInt(goalTarget, 10) || 1;
                 if (current > 1) setGoalTarget((current - 1).toString());
               }}
+              depth={0.85}
+              haptic
             >
               <Text style={styles.targetButtonText}>−</Text>
-            </TouchableOpacity>
+            </PressFeedback>
             <TextInput
               style={styles.targetInput}
               value={goalTarget}
@@ -296,16 +296,17 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
               keyboardType="number-pad"
               textAlign="center"
             />
-            <TouchableOpacity
+            <PressFeedback
               style={styles.targetButton}
               onPress={() => {
-                hapticTap();
                 const current = parseInt(goalTarget, 10) || 0;
                 setGoalTarget((current + 1).toString());
               }}
+              depth={0.85}
+              haptic
             >
               <Text style={styles.targetButtonText}>+</Text>
-            </TouchableOpacity>
+            </PressFeedback>
             <Text style={styles.targetLabel}>
               times per {goalPeriod}
             </Text>

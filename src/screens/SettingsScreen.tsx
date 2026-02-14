@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedSection from '../components/AnimatedSection';
 import GlassSurface from '../components/ui/GlassSurface';
@@ -8,6 +8,7 @@ import { pickBackupFile, readBackupFromFile, shareFile, writeBackupToFile } from
 import * as backupRepo from '../db/backupRepo';
 import { useHabitsStore } from '../state/useHabitsStore';
 import { colors, glowShadow } from '../theme/tokens';
+import PressFeedback from '../ui/press/PressFeedback';
 import { hapticSuccess, hapticWarning } from '../utils/haptics';
 
 export default function SettingsScreen() {
@@ -90,22 +91,24 @@ export default function SettingsScreen() {
         <AnimatedSection index={1}>
         <GlassSurface style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
-          <TouchableOpacity style={styles.settingRow}>
+          <PressFeedback style={styles.settingRow} depth={0.97} haptic>
             <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.settingLabel}>Theme</Text>
             <Text style={styles.settingValue}>Dark</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
-          </TouchableOpacity>
+          </PressFeedback>
         </GlassSurface>
         </AnimatedSection>
 
         <AnimatedSection index={2}>
         <GlassSurface style={styles.section}>
           <Text style={styles.sectionTitle}>Data</Text>
-          <TouchableOpacity
+          <PressFeedback
             style={styles.settingRow}
             onPress={handleExport}
             disabled={isBusy}
+            depth={0.97}
+            haptic
           >
             {isExporting ? (
               <ActivityIndicator size="small" color={colors.accentA} />
@@ -116,11 +119,13 @@ export default function SettingsScreen() {
               Export data
             </Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </PressFeedback>
+          <PressFeedback
             style={[styles.settingRow, styles.lastRow]}
             onPress={handleImport}
             disabled={isBusy}
+            depth={0.97}
+            haptic
           >
             {isImporting ? (
               <ActivityIndicator size="small" color={colors.accentA} />
@@ -131,7 +136,7 @@ export default function SettingsScreen() {
               Import data
             </Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
-          </TouchableOpacity>
+          </PressFeedback>
         </GlassSurface>
         </AnimatedSection>
 

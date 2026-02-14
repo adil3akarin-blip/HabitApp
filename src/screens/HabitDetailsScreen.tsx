@@ -16,7 +16,16 @@ import { computeGoalProgress } from '../domain/goals';
 import { computeLongestStreak, computeStreak } from '../domain/streaks';
 import { useHabitsStore } from '../state/useHabitsStore';
 import { colors, glowShadow, radii } from '../theme/tokens';
-import { hapticTap, hapticWarning } from '../utils/haptics';
+import PressFeedback from '../ui/press/PressFeedback';
+import StreakFlame from '../ui/svg/StreakFlame';
+import { hapticSuccess, hapticTap, hapticWarning } from '../utils/haptics';
+
+const MILESTONE_STREAKS = [
+  { days: 7, label: '🔥 7 Day Streak!' },
+  { days: 30, label: '💪 30 Day Warrior!' },
+  { days: 100, label: '💎 100 Day Legend!' },
+  { days: 365, label: '👑 365 Day Champion!' },
+];
 
 type HabitDetailsScreenProps = {
   route: RouteProp<HomeStackParamList, 'HabitDetails'>;
@@ -51,6 +60,18 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
     if (!habit) return 0;
     return computeStreak(habit, calendarActiveDates, todayISO());
   }, [habit, calendarActiveDates]);
+
+  const milestoneData = MILESTONE_STREAKS.find(m => m.days === currentStreak);
+  const isMilestoneStreak = !!milestoneData;
+
+  useEffect(() => {
+    if (isMilestoneStreak) {
+      const timer = setTimeout(() => {
+        hapticSuccess();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isMilestoneStreak]);
 
   const longestStreak = useMemo(() => {
     return computeLongestStreak(calendarActiveDates);
@@ -146,19 +167,20 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <AnimatedSection index={0}>
           <View style={styles.header}>
-            <View style={[
-              styles.iconContainer,
-              { backgroundColor: habit.color + '18' },
-              glowShadow(habit.color, 12, 0.25),
-            ]}>
-              <Ionicons
-                name={habit.icon as keyof typeof Ionicons.glyphMap}
-                size={28}
-                color={habit.color}
-              />
+            <View style={[styles.iconContainer, { backgroundColor: habit.color + '18' }, glowShadow(habit.color, 12, 0.25)]}>
+              <Ionicons name={habit.icon as any} size={28} color={habit.color} />
             </View>
             <View style={styles.headerInfo}>
-              <Text style={styles.habitName}>{habit.name}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.habitName}>{habit.name}</Text>
+                {isMilestoneStreak && milestoneData && (
+                  <View style={[styles.milestoneBadge, { backgroundColor: habit.color + '20', borderColor: habit.color + '40' }]}>
+                    <Text style={[styles.milestoneBadgeText, { color: habit.color }]}>
+                      {milestoneData.label}
+                    </Text>
+                  </View>
+                )}
+              </View>
               {habit.description ? (
                 <Text style={styles.habitDescription}>{habit.description}</Text>
               ) : null}
@@ -171,7 +193,7 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
           <Pill
             label="streak"
             value={currentStreak}
-            icon={<Ionicons name="flame" size={14} color={habit.color} />}
+            icon={<StreakFlame streak={currentStreak} size={18} />}
           />
           <Pill
             label="best"
@@ -217,15 +239,15 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
         <AnimatedSection index={3}>
         <GlassSurface style={styles.calendarSection}>
           <View style={styles.monthHeader}>
-            <TouchableOpacity onPress={handlePrevMonth} style={styles.monthButton}>
+            <PressFeedback onPress={handlePrevMonth} style={styles.monthButton} depth={0.85} haptic>
               <Ionicons name="chevron-back" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
+            </PressFeedback>
             <Text style={styles.monthTitle}>
               {format(currentMonth, 'MMMM yyyy')}
             </Text>
-            <TouchableOpacity onPress={handleNextMonth} style={styles.monthButton}>
+            <PressFeedback onPress={handleNextMonth} style={styles.monthButton} depth={0.85} haptic>
               <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
+            </PressFeedback>
           </View>
 
           <CalendarMonth
@@ -302,11 +324,28 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   habitName: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.text,
     letterSpacing: -0.4,
+  },
+  milestoneBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  milestoneBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   habitDescription: {
     fontSize: 14,
