@@ -1,6 +1,18 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
+import { spring, timing } from '../motion/tokens';
+import { colors } from '../theme/tokens';
+import { hapticTap } from '../utils/haptics';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const ICONS: (keyof typeof Ionicons.glyphMap)[] = [
   'star',
@@ -46,6 +58,50 @@ interface IconPickerProps {
   color: string;
 }
 
+const IconSwatch = React.memo(function IconSwatch({
+  icon,
+  isSelected,
+  color,
+  onSelect,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  isSelected: boolean;
+  color: string;
+  onSelect: () => void;
+}) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    hapticTap();
+    scale.value = withSequence(
+      withTiming(0.8, timing.snappy),
+      withSpring(1, spring.bouncy),
+    );
+    onSelect();
+  };
+
+  return (
+    <AnimatedPressable
+      style={[
+        styles.iconButton,
+        isSelected && { backgroundColor: color, borderColor: color },
+        animatedStyle,
+      ]}
+      onPress={handlePress}
+    >
+      <Ionicons
+        name={icon}
+        size={24}
+        color={isSelected ? '#fff' : colors.textSecondary}
+      />
+    </AnimatedPressable>
+  );
+});
+
 function IconPicker({ selectedIcon, onSelect, color }: IconPickerProps) {
   return (
     <ScrollView 
@@ -53,25 +109,15 @@ function IconPicker({ selectedIcon, onSelect, color }: IconPickerProps) {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {ICONS.map((icon) => {
-        const isSelected = selectedIcon === icon;
-        return (
-          <TouchableOpacity
-            key={icon}
-            style={[
-              styles.iconButton,
-              isSelected && { backgroundColor: color, borderColor: color },
-            ]}
-            onPress={() => onSelect(icon)}
-          >
-            <Ionicons
-              name={icon}
-              size={24}
-              color={isSelected ? '#fff' : '#666'}
-            />
-          </TouchableOpacity>
-        );
-      })}
+      {ICONS.map((icon) => (
+        <IconSwatch
+          key={icon}
+          icon={icon}
+          isSelected={selectedIcon === icon}
+          color={color}
+          onSelect={() => onSelect(icon)}
+        />
+      ))}
     </ScrollView>
   );
 }
@@ -90,7 +136,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.glassStrong,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

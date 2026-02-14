@@ -7,7 +7,7 @@ import GlassSurface from '../components/ui/GlassSurface';
 import { pickBackupFile, readBackupFromFile, shareFile, writeBackupToFile } from '../data/backupFile';
 import * as backupRepo from '../db/backupRepo';
 import { useHabitsStore } from '../state/useHabitsStore';
-import { colors } from '../theme/tokens';
+import { colors, glowShadow } from '../theme/tokens';
 import { hapticSuccess, hapticWarning } from '../utils/haptics';
 
 export default function SettingsScreen() {
@@ -79,7 +79,7 @@ export default function SettingsScreen() {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <AnimatedSection index={0}>
         <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
-          <View style={styles.appIcon}>
+          <View style={[styles.appIcon, glowShadow(colors.accentA, 16, 0.3)]}>
             <Ionicons name="grid" size={32} color={colors.accentA} />
           </View>
           <Text style={styles.appName}>HabitGrid</Text>

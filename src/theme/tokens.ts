@@ -83,18 +83,43 @@ export const typography = {
   },
 };
 
-export const shadow = {
-  shadowColor: "#000",
-  shadowOpacity: 0.3,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 4,
-};
+// ─── Glow shadows ─────────────────────────────────────────
+// Use sparingly: completed states, streak highlights, accent CTAs
+export function glowShadow(
+  color: string,
+  radius: number = 12,
+  opacity: number = 0.4,
+) {
+  return {
+    shadowColor: color,
+    shadowOpacity: opacity,
+    shadowRadius: radius,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: Math.round(radius * 0.8),
+  };
+}
 
 export const shadowLight = {
   shadowColor: "#000",
-  shadowOpacity: 0.15,
-  shadowRadius: 6,
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
   shadowOffset: { width: 0, height: 2 },
-  elevation: 2,
+  elevation: 3,
+};
+
+export const shadowMedium = {
+  shadowColor: "#000",
+  shadowOpacity: 0.15,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 6,
+};
+
+// ─── Gradient presets ─────────────────────────────────────
+export const gradients = {
+  warmGlow: [colors.accentA + "00", colors.accentA + "18"],
+  cardShine: ["rgba(245,240,232,0.06)", "rgba(245,240,232,0.01)"],
+  onboardingAmber: [colors.bg, "#1A1510"],
+  onboardingCopper: [colors.bg, "#1A1210"],
+  onboardingForest: [colors.bg, "#101A14"],
 };

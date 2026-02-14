@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useRef, useState } from 'react';
 import {
   Dimensions,
@@ -13,12 +14,13 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedPressable from '../components/ui/AnimatedPressable';
 import * as appMetaRepo from '../db/appMetaRepo';
-import { spring } from '../motion/tokens';
-import { colors, radii } from '../theme/tokens';
+import { spring, timing } from '../motion/tokens';
+import { colors, gradients, radii } from '../theme/tokens';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -33,18 +35,21 @@ const PAGES = [
     title: 'Track habits\nvisually',
     subtitle: 'A year-at-a-glance grid makes progress obvious.',
     accentColor: colors.accentA,
+    gradient: gradients.onboardingAmber,
   },
   {
     icon: 'calendar-outline' as const,
     title: 'Tap to log',
     subtitle: 'Mark today or any past day in the calendar.',
     accentColor: colors.accentB,
+    gradient: gradients.onboardingCopper,
   },
   {
     icon: 'flame-outline' as const,
     title: 'Build streaks',
     subtitle: 'Set daily, weekly, or monthly goals and grow consistency.',
     accentColor: colors.success,
+    gradient: gradients.onboardingForest,
   },
 ];
 
@@ -55,10 +60,15 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   const dotPosition = useSharedValue(0);
 
+  const bgOpacity = useSharedValue(1);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     if (page !== currentPage) {
       dotPosition.value = withSpring(page, spring.tight);
+      // Subtle bg transition
+      bgOpacity.value = 0.6;
+      bgOpacity.value = withTiming(1, timing.standard);
     }
     setCurrentPage(page);
   };
@@ -88,8 +98,20 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   const isLastPage = currentPage === PAGES.length - 1;
 
+  const bgAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: bgOpacity.value,
+  }));
+
   return (
     <View style={styles.container}>
+      <Animated.View style={[StyleSheet.absoluteFill, bgAnimatedStyle]}>
+        <LinearGradient
+          colors={PAGES[currentPage].gradient as [string, string]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+      </Animated.View>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <AnimatedPressable onPress={handleSkip} scaleValue={0.95}>
           <Text style={styles.skipText}>Skip</Text>
@@ -112,6 +134,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             </View>
             <Text style={styles.title}>{page.title}</Text>
             <Text style={styles.subtitle}>{page.subtitle}</Text>
+            <Text style={styles.pageNumber}>{index + 1}/{PAGES.length}</Text>
           </View>
         ))}
       </ScrollView>
@@ -187,6 +210,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  pageNumber: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textFaint,
+    marginTop: 32,
+    letterSpacing: 1,
   },
   footer: {
     paddingHorizontal: 24,

@@ -29,7 +29,7 @@ import {
 } from '../domain/notifications';
 import { useHabitsStore } from '../state/useHabitsStore';
 import { colors, radii } from '../theme/tokens';
-import { hapticSuccess } from '../utils/haptics';
+import { hapticSuccess, hapticTap } from '../utils/haptics';
 
 type HabitFormScreenProps = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'HabitForm'>;
@@ -185,6 +185,21 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
     >
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <AnimatedSection index={0}>
+        <View style={styles.previewCard}>
+          <View style={[styles.previewIcon, { backgroundColor: color + '18' }]}>
+            <Ionicons
+              name={icon as keyof typeof Ionicons.glyphMap}
+              size={24}
+              color={color}
+            />
+          </View>
+          <Text style={styles.previewName} numberOfLines={1}>
+            {name || 'Your habit'}
+          </Text>
+        </View>
+        </AnimatedSection>
+
+        <AnimatedSection index={1}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Name *</Text>
           <TextInput
@@ -201,7 +216,7 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={1}>
+        <AnimatedSection index={2}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Description</Text>
           <TextInput
@@ -216,21 +231,21 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={2}>
+        <AnimatedSection index={3}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Color</Text>
           <ColorPicker selectedColor={color} onSelect={setColor} />
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={3}>
+        <AnimatedSection index={4}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Icon</Text>
           <IconPicker selectedIcon={icon} onSelect={setIcon} color={color} />
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={4}>
+        <AnimatedSection index={5}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Period</Text>
           <View style={styles.periodContainer}>
@@ -241,7 +256,10 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
                   styles.periodButton,
                   goalPeriod === period.value && { backgroundColor: color },
                 ]}
-                onPress={() => setGoalPeriod(period.value)}
+                onPress={() => {
+                  hapticTap();
+                  setGoalPeriod(period.value);
+                }}
               >
                 <Text
                   style={[
@@ -257,13 +275,14 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={5}>
+        <AnimatedSection index={6}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Goal Target</Text>
           <View style={styles.targetContainer}>
             <TouchableOpacity
               style={styles.targetButton}
               onPress={() => {
+                hapticTap();
                 const current = parseInt(goalTarget, 10) || 1;
                 if (current > 1) setGoalTarget((current - 1).toString());
               }}
@@ -280,6 +299,7 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
             <TouchableOpacity
               style={styles.targetButton}
               onPress={() => {
+                hapticTap();
                 const current = parseInt(goalTarget, 10) || 0;
                 setGoalTarget((current + 1).toString());
               }}
@@ -293,7 +313,7 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={6}>
+        <AnimatedSection index={7}>
         <GlassSurface style={styles.section}>
           <Text style={styles.label}>Daily Reminder</Text>
           <View style={styles.reminderRow}>
@@ -336,9 +356,9 @@ export default function HabitFormScreen({ navigation, route }: HabitFormScreenPr
         </GlassSurface>
         </AnimatedSection>
 
-        <AnimatedSection index={7}>
+        <AnimatedSection index={8}>
         <AnimatedPressable
-          style={styles.saveButton}
+          style={[styles.saveButton, { backgroundColor: color }]}
           onPress={async () => {
             await handleSave();
             hapticSuccess();
@@ -363,6 +383,28 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
     padding: 16,
+  },
+  previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  previewIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  previewName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.3,
+    flex: 1,
   },
   section: {
     marginBottom: 16,

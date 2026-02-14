@@ -15,8 +15,8 @@ import { todayISO, toISODate } from '../domain/dates';
 import { computeGoalProgress } from '../domain/goals';
 import { computeLongestStreak, computeStreak } from '../domain/streaks';
 import { useHabitsStore } from '../state/useHabitsStore';
-import { colors, radii } from '../theme/tokens';
-import { hapticWarning } from '../utils/haptics';
+import { colors, glowShadow, radii } from '../theme/tokens';
+import { hapticTap, hapticWarning } from '../utils/haptics';
 
 type HabitDetailsScreenProps = {
   route: RouteProp<HomeStackParamList, 'HabitDetails'>;
@@ -65,7 +65,7 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
   const progressWidth = useSharedValue(progressPercent);
 
   useEffect(() => {
-    progressWidth.value = withTiming(progressPercent, { duration: 200 });
+    progressWidth.value = withTiming(progressPercent, { duration: 600 });
   }, [progressPercent]);
 
   const progressBarStyle = useAnimatedStyle(() => ({
@@ -128,10 +128,12 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
   }
 
   const handlePrevMonth = () => {
+    hapticTap();
     setCurrentMonth((prev) => subMonths(prev, 1));
   };
 
   const handleNextMonth = () => {
+    hapticTap();
     setCurrentMonth((prev) => addMonths(prev, 1));
   };
 
@@ -144,7 +146,11 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <AnimatedSection index={0}>
           <View style={styles.header}>
-            <View style={[styles.iconContainer, { backgroundColor: habit.color + '18' }]}>
+            <View style={[
+              styles.iconContainer,
+              { backgroundColor: habit.color + '18' },
+              glowShadow(habit.color, 12, 0.25),
+            ]}>
               <Ionicons
                 name={habit.icon as keyof typeof Ionicons.glyphMap}
                 size={28}
@@ -341,14 +347,14 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: colors.glassStrong,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
     minWidth: 2,
   },
   progressCount: {

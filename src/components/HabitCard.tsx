@@ -12,8 +12,8 @@ import { todayISO } from '../domain/dates';
 import { Habit } from '../domain/models';
 import { computeLongestStreak, computeStreak } from '../domain/streaks';
 import { press, spring, timing } from '../motion/tokens';
-import { colors, radii } from '../theme/tokens';
-import { hapticTap } from '../utils/haptics';
+import { colors, glowShadow, radii } from '../theme/tokens';
+import { hapticSuccess, hapticTap } from '../utils/haptics';
 import HabitGrid from './HabitGrid';
 import AnimatedPressable from './ui/AnimatedPressable';
 
@@ -91,19 +91,19 @@ function HabitCard({
   }));
 
   const handleTogglePress = () => {
-    hapticTap();
-
     const willComplete = isDailyMulti && (todayCount + 1 >= habit.goalTarget) && !isCompletedToday;
     const willToggleOn = !isDailyMulti && !isCompletedToday;
 
     if (willComplete || willToggleOn) {
+      hapticSuccess();
       // Celebration: compress → overshoot → settle
       toggleScale.value = withSequence(
         withTiming(press.scaleTiny, timing.snappy),
-        withSpring(1.12, spring.bouncy),
+        withSpring(1.15, spring.bouncy),
         withSpring(1, spring.tight),
       );
     } else {
+      hapticTap();
       // Standard: compress → spring back
       toggleScale.value = withSequence(
         withTiming(press.scaleTiny, timing.snappy),
@@ -122,11 +122,18 @@ function HabitCard({
 
   return (
     <AnimatedPressable
-      style={styles.container}
+      style={[
+        styles.container,
+        isCompletedToday && {
+          borderColor: habit.color + '30',
+          ...glowShadow(habit.color, 8, 0.15),
+        },
+      ]}
       onPress={onPress}
       onLongPress={onLongPress}
       scaleValue={0.98}
     >
+      <View style={[styles.accentStrip, { backgroundColor: habit.color, opacity: isCompletedToday ? 1 : 0.2 }]} />
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: habit.color + '18' }]}>
           <Ionicons
@@ -195,12 +202,25 @@ export default React.memo(HabitCard);
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 20,
     backgroundColor: colors.bgCard,
     borderRadius: radii.card,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  accentStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    borderTopLeftRadius: radii.card,
+    borderBottomLeftRadius: radii.card,
   },
   header: {
     flexDirection: 'row',

@@ -33,7 +33,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     };
   }, [gridRangeDays]);
 
-  const todaySummary = useMemo(() => {
+  const { todaySummary, todayDone } = useMemo(() => {
     const today = todayISO();
     let done = 0;
     habits.forEach((h) => {
@@ -46,8 +46,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         if (completions?.has(today)) done++;
       }
     });
-    return `${done}/${habits.length} done today`;
+    const allDone = done === habits.length && habits.length > 0;
+    const summary = allDone
+      ? 'All done! Great job today.'
+      : `${habits.length - done} remaining today`;
+    return { todaySummary: summary, todayDone: done };
   }, [habits, completionsByHabitId, countsByHabitId]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 6) return 'Late night';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    if (hour < 21) return 'Good evening';
+    return 'Good night';
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -141,8 +154,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   return (
     <View style={styles.container}>
       <GlassHeader
-        title="Habits"
+        title={greeting}
         subtitle={habits.length > 0 ? todaySummary : undefined}
+        progressDone={habits.length > 0 ? todayDone : undefined}
+        progressTotal={habits.length > 0 ? habits.length : undefined}
+        progressColor={colors.accentA}
         rightAction={
           <AnimatedPressable
             style={styles.addButton}
