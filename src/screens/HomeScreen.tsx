@@ -7,6 +7,7 @@ import { HomeStackParamList } from '../app/navigation/HomeStack';
 import AnimatedListItem from '../components/AnimatedListItem';
 import AnimatedSection from '../components/AnimatedSection';
 import HabitCard from '../components/HabitCard';
+import { EmptyStateLeaf } from '../components/svg';
 import AnimatedPressable from '../components/ui/AnimatedPressable';
 import GlassHeader from '../components/ui/GlassHeader';
 import GlassSurface from '../components/ui/GlassSurface';
@@ -107,7 +108,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <AnimatedSection index={0} style={{ width: '100%' }}>
       <GlassSurface style={styles.emptyCard}>
         <View style={styles.emptyIconContainer}>
-          <Ionicons name="leaf-outline" size={28} color={colors.accentA} />
+          <EmptyStateLeaf size={56} color={colors.accentA} />
         </View>
         <Text style={styles.emptyTitle}>No habits yet</Text>
         <Text style={styles.emptySubtitle}>
@@ -212,13 +213,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   emptyIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accentA + '18',
+    width: 80,
+    height: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   emptyTitle: {
     fontSize: 20,

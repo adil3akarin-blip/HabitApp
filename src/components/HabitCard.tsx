@@ -15,6 +15,7 @@ import { press, spring, timing } from '../motion/tokens';
 import { colors, glowShadow, radii } from '../theme/tokens';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 import HabitGrid from './HabitGrid';
+import { CheckCircleAnimated, FlameAnimated, PlusToCheck, TrophyAnimated } from './svg';
 import AnimatedPressable from './ui/AnimatedPressable';
 
 const AnimatedPressableView = Animated.createAnimatedComponent(Pressable);
@@ -160,26 +161,29 @@ function HabitCard({
           onPress={handleTogglePress}
         >
           <Animated.View style={[styles.fillOverlay, { backgroundColor: habit.color }, fillAnimatedStyle]} />
-          <Ionicons
-            name={isCompletedToday ? 'checkmark' : 'add'}
-            size={20}
-            color={isCompletedToday ? '#fff' : colors.textSecondary}
-            style={{ zIndex: 1 }}
-          />
+          <View style={{ zIndex: 1 }}>
+            <PlusToCheck
+              size={20}
+              isChecked={isCompletedToday}
+              color={colors.textSecondary}
+              checkedColor="#fff"
+              strokeWidth={2.5}
+            />
+          </View>
         </AnimatedPressableView>
       </View>
       <View style={styles.bottomRow}>
         <View style={styles.statsColumn}>
           <View style={styles.statItem}>
-            <Ionicons name="flame" size={12} color={colors.danger} style={styles.glowWrap} />
+            <FlameAnimated size={14} color={colors.danger} isActive={streak > 0} />
             <Text style={[styles.statValue, { color: colors.danger }]}>{streak}</Text>
           </View>
           <View style={styles.statItem}>
-            <Ionicons name="trophy" size={12} color={colors.accentA} />
+            <TrophyAnimated size={14} color={colors.accentA} isActive={best > 0} />
             <Text style={styles.statValue}>{best}</Text>
           </View>
           <View style={styles.statItem}>
-            <Ionicons name="checkmark-circle" size={12} color={habit.color} />
+            <CheckCircleAnimated size={14} color={habit.color} isActive={total > 0} />
             <Text style={styles.statValue}>{total}</Text>
           </View>
         </View>

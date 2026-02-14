@@ -8,6 +8,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { HomeStackParamList } from '../app/navigation/HomeStack';
 import AnimatedSection from '../components/AnimatedSection';
 import CalendarMonth from '../components/CalendarMonth';
+import { CheckCircleAnimated, FlameAnimated, TrophyAnimated } from '../components/svg';
 import AnimatedPressable from '../components/ui/AnimatedPressable';
 import GlassSurface from '../components/ui/GlassSurface';
 import Pill from '../components/ui/Pill';
@@ -171,17 +172,17 @@ export default function HabitDetailsScreen({ route, navigation }: HabitDetailsSc
           <Pill
             label="streak"
             value={currentStreak}
-            icon={<Ionicons name="flame" size={14} color={habit.color} />}
+            icon={<FlameAnimated size={16} color={habit.color} isActive={currentStreak > 0} />}
           />
           <Pill
             label="best"
             value={longestStreak}
-            icon={<Ionicons name="trophy" size={14} color={colors.accentA} />}
+            icon={<TrophyAnimated size={16} color={colors.accentA} isActive={longestStreak > 0} />}
           />
           <Pill
             label="total"
             value={calendarActiveDates.size}
-            icon={<Ionicons name="checkmark-circle" size={14} color={colors.success} />}
+            icon={<CheckCircleAnimated size={16} color={colors.success} isActive={calendarActiveDates.size > 0} />}
           />
         </View>
         </AnimatedSection>
